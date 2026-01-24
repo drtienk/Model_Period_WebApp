@@ -919,10 +919,11 @@ function renderTable() {
   }
 
   const headers = sheet.headers;
+  console.log("[headers]", state.activeSheet, sheet.headers);
   let thHtml = "<tr><th class=\"row-num\">#</th>";
   headers.forEach(function (h) {
     const req = isRequired(state.activeSheet, h);
-    const showStar = (state.activeSheet === "Company" && state.activeGroup === "ModelData" && req);
+    const showStar = (state.activeGroup === "ModelData" && (state.activeSheet === "Company" || state.activeSheet === "Company Resource") && req);
     thHtml += "<th" + (req ? " class=\"required\"" : "") + ">" + escapeHtml(h) + (showStar ? "<span class=\"req-star\">*</span>" : "") + "</th>";
   });
   thHtml += "<th class=\"row-actions\"></th></tr>";

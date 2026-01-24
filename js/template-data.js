@@ -80,7 +80,7 @@ const TEMPLATE_DATA = {
       workbook: "ModelData",
       headers: ["Resource Code", "Resource - Level 1", "Resource - Level 2", "Resource - Level 3", "Resource - Level 4", "Resource - Level 5", "Description", "A.C. or Value Object Type", "Resource Driver", "Product Cost Type"],
       data: [["", "", "", "", "", "", "", "", "", ""]],
-      required: ["Resource Code"]
+      required: ["Resource Code", "Resource - Level 1", "Resource - Level 2", "Description", "A.C. or Value Object Type", "Resource Driver"]
     },
     "Activity Center": {
       workbook: "ModelData",
@@ -360,9 +360,12 @@ function getSheetConfig(sheetName) {
   return TEMPLATE_DATA.sheets[sheetName];
 }
 
+function norm(s) { return String(s).trim().replace(/\s+/g, " ").replace(/[–—]/g, "-"); }
+
 function isRequired(sheetName, columnName) {
   const config = TEMPLATE_DATA.sheets[sheetName];
-  return config && config.required && config.required.includes(columnName);
+  if (!config || !config.required) return false;
+  return config.required.some(function (r) { return norm(r) === norm(columnName); });
 }
 
 function getExcelSheetName(internalName) {
