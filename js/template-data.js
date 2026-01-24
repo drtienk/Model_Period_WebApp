@@ -8,7 +8,14 @@ const TEMPLATE_DATA = {
       name: "Model Data",
       description: "Basic Settings",
       color: "#2563eb",
-      filename: "ModelData"
+      filename: "ModelData",
+      uiGroups: [
+        { key: "basic", label: "Basic", sheets: ["Company", "Business Unit"] },
+        { key: "m1", label: "Module 1", sheets: ["Company Resource"] },
+        { key: "m2", label: "Module 2", sheets: ["Activity Center", " Normal Capacity"] },
+        { key: "m3", label: "Module 3", sheets: ["Activity", "Driver and Allocation Formula", "Machine(Activity Center Driver)"] },
+        { key: "m4", label: "Module 4", sheets: ["Material", "ProductProject", "Product", "Customer", "Service Driver"] }
+      ]
     },
     PeriodData: {
       name: "Period Data",

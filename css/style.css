@@ -186,14 +186,91 @@ body {
 .sheet-tabs-wrapper {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  overflow-x: auto;
 }
 
+.sheet-tabs-wrapper.is-model .sheet-tabs {
+  display: none;
+}
+
+/* Grouped navigation (ModelData) */
+.grouped-nav {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 20px 14px;
+}
+
+.sheet-tabs-wrapper.is-model .grouped-nav {
+  display: flex;
+}
+
+.nav-group-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.nav-group-badge {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  background: #e2e8f0;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.nav-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scroll-behavior: smooth;
+  padding: 2px 0;
+  min-width: 0;
+}
+
+.nav-pill {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-pill:hover {
+  background: #e2e8f0;
+  color: var(--color-text);
+}
+
+.nav-pill.active {
+  background: var(--color-model);
+  color: #fff;
+}
+
+.nav-pill.active:hover {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+/* Horizontal sheet tabs (PeriodData) */
 .sheet-tabs {
   display: flex;
   gap: 2px;
   padding: 8px 12px 0;
   min-width: min-content;
+  overflow-x: auto;
 }
 
 .sheet-tab {

@@ -410,8 +410,17 @@ function renderWorkbookToggle() {
 }
 
 function renderSheetTabs() {
-  const container = document.getElementById("sheetTabs");
-  container.innerHTML = "";
+  const wrapper = document.getElementById("sheetTabsWrapper");
+  const sheetTabs = document.getElementById("sheetTabs");
+
+  if (state.activeGroup === "ModelData" && TEMPLATE_DATA.workbooks.ModelData.uiGroups) {
+    wrapper.classList.add("is-model");
+    renderGroupedNavForModelData();
+    return;
+  }
+
+  wrapper.classList.remove("is-model");
+  sheetTabs.innerHTML = "";
   const order = getSheetsForWorkbook(state.activeGroup);
   order.forEach(function (internalName) {
     const config = getSheetConfig(internalName);
@@ -425,7 +434,46 @@ function renderSheetTabs() {
       renderAll();
       autoSave();
     });
-    container.appendChild(tab);
+    sheetTabs.appendChild(tab);
+  });
+}
+
+function renderGroupedNavForModelData() {
+  const container = document.getElementById("groupedNav");
+  const uiGroups = TEMPLATE_DATA.workbooks.ModelData.uiGroups;
+  if (!container || !uiGroups) return;
+  container.innerHTML = "";
+
+  uiGroups.forEach(function (grp) {
+    const row = document.createElement("div");
+    row.className = "nav-group-row";
+
+    const badge = document.createElement("span");
+    badge.className = "nav-group-badge";
+    badge.textContent = grp.label;
+    row.appendChild(badge);
+
+    const pillsWrap = document.createElement("div");
+    pillsWrap.className = "nav-pills";
+
+    (grp.sheets || []).forEach(function (internalName) {
+      const config = getSheetConfig(internalName);
+      if (!config || config.hidden) return;
+
+      const pill = document.createElement("button");
+      pill.type = "button";
+      pill.className = "nav-pill" + (internalName === state.activeSheet ? " active" : "");
+      pill.textContent = getExcelSheetName(internalName);
+      pill.addEventListener("click", function () {
+        state.activeSheet = internalName;
+        renderAll();
+        autoSave();
+      });
+      pillsWrap.appendChild(pill);
+    });
+
+    row.appendChild(pillsWrap);
+    container.appendChild(row);
   });
 }
 
