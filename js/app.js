@@ -918,7 +918,8 @@ function renderTable() {
   let thHtml = "<tr><th class=\"row-num\">#</th>";
   headers.forEach(function (h) {
     const req = isRequired(state.activeSheet, h);
-    thHtml += "<th" + (req ? " class=\"required\"" : "") + ">" + escapeHtml(h) + "</th>";
+    const showStar = (state.activeSheet === "Company" && state.activeGroup === "ModelData" && req);
+    thHtml += "<th" + (req ? " class=\"required\"" : "") + ">" + escapeHtml(h) + (showStar ? "<span class=\"req-star\">*</span>" : "") + "</th>";
   });
   thHtml += "<th class=\"row-actions\"></th></tr>";
   thead.innerHTML = thHtml;

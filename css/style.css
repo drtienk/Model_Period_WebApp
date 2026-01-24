@@ -337,6 +337,16 @@ body {
   color: var(--color-error);
 }
 
+/* 必填星號（Company 等用 span 顯示，與 th.required 併用時避免 ::after 重複） */
+.req-star {
+  color: var(--color-error);
+  margin-left: 4px;
+  font-size: 0.9em;
+}
+.data-table th.required:has(.req-star)::after {
+  content: none;
+}
+
 .data-table td {
   padding: 2px;
 }

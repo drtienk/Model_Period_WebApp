@@ -68,7 +68,7 @@ const TEMPLATE_DATA = {
       workbook: "ModelData",
       headers: ["Company", "Description", "Currency", "Resource Level", "Activity Center Level", "Activity Level"],
       data: [["", "", "", "", "", ""]],
-      required: ["Company", "Currency"]
+      required: ["Company", "Description", "Currency", "Resource Level", "Activity Center Level", "Activity Level"]
     },
     "Business Unit": {
       workbook: "ModelData",
