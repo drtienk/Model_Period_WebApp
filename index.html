@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Excel Teaching Form</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="header">
+      <h1>Excel Teaching Form</h1>
+      <div class="header-actions">
+        <span class="student-badge">Student: <strong id="studentDisplay">—</strong></span>
+        <button type="button" id="btnChangeStudent" class="btn btn-secondary">Change</button>
+      </div>
+    </header>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="workbook-toggle">
+        <button type="button" id="btnModelData" class="workbook-btn active" data-workbook="ModelData">
+          Model Data
+        </button>
+        <button type="button" id="btnPeriodData" class="workbook-btn" data-workbook="PeriodData">
+          Period Data
+        </button>
+      </div>
+      <div class="toolbar-actions">
+        <label class="btn btn-primary">
+          Upload
+          <input type="file" id="inputUpload" accept=".xlsx" hidden>
+        </label>
+        <button type="button" id="btnDownload" class="btn btn-primary">Download</button>
+        <button type="button" id="btnReset" class="btn btn-secondary">Reset</button>
+      </div>
+    </div>
+
+    <!-- Sheet tabs -->
+    <div class="sheet-tabs-wrapper">
+      <div class="sheet-tabs" id="sheetTabs"></div>
+    </div>
+
+    <!-- Main content -->
+    <main class="main">
+      <div class="sheet-header">
+        <h2 id="sheetTitle">Company</h2>
+        <button type="button" id="btnAddRow" class="btn btn-small">+ Add Row</button>
+      </div>
+      <p class="validation-hint">* = Required | Red border = Empty required field</p>
+      <div class="table-wrapper">
+        <table class="data-table" id="dataTable">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div id="validationSummary" class="validation-summary hidden"></div>
+    </main>
+
+    <!-- Status bar -->
+    <footer class="status-bar">
+      <span id="statusText">Ready</span>
+    </footer>
+  </div>
+
+  <!-- Student ID Modal -->
+  <div id="studentModal" class="modal-overlay">
+    <div class="modal">
+      <h3>Enter Student ID</h3>
+      <input type="text" id="studentIdInput" placeholder="e.g. ABC123" maxlength="50" autocomplete="off">
+      <button type="button" id="btnSetStudent" class="btn btn-primary">Continue</button>
+    </div>
+  </div>
+
+  <!-- Reset confirmation -->
+  <div id="resetModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>Reset All Data?</h3>
+      <p>This will clear all your data and restore template defaults. Download a backup first if you need to keep your work.</p>
+      <div class="modal-actions">
+        <button type="button" id="btnResetCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="btnResetConfirm" class="btn btn-danger">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="js/template-data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

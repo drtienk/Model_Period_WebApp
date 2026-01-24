@@ -1,0 +1,428 @@
+/* Excel Teaching Form - Styles */
+
+:root {
+  --color-model: #2563eb;
+  --color-period: #059669;
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text: #1e293b;
+  --color-text-muted: #64748b;
+  --color-error: #dc2626;
+  --color-danger: #b91c1c;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --radius: 6px;
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow);
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.student-badge {
+  color: var(--color-text-muted);
+}
+
+.student-badge strong {
+  color: var(--color-text);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-model);
+  border-color: var(--color-model);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #991b1b;
+  border-color: #991b1b;
+  color: #fff;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.workbook-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.workbook-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.workbook-btn:hover {
+  background: #f1f5f9;
+}
+
+.workbook-btn.active {
+  border-color: var(--color-model);
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--color-model);
+}
+
+.workbook-btn[data-workbook="PeriodData"].active {
+  border-color: var(--color-period);
+  background: rgba(5, 150, 105, 0.1);
+  color: var(--color-period);
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Sheet tabs */
+.sheet-tabs-wrapper {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+}
+
+.sheet-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 12px 0;
+  min-width: min-content;
+}
+
+.sheet-tab {
+  padding: 8px 14px;
+  font-size: 13px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: #f1f5f9;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sheet-tab:hover {
+  background: #e2e8f0;
+  color: var(--color-text);
+}
+
+.sheet-tab.active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+  border-bottom: 1px solid var(--color-surface);
+  margin-bottom: -1px;
+  font-weight: 500;
+}
+
+/* Main content */
+.main {
+  flex: 1;
+  padding: 20px;
+  background: var(--color-bg);
+  overflow: auto;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sheet-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.validation-hint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.data-table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.data-table th.required::after {
+  content: " *";
+  color: var(--color-error);
+}
+
+.data-table td {
+  padding: 2px;
+}
+
+.data-table .row-num {
+  width: 36px;
+  min-width: 36px;
+  text-align: center;
+  background: #f8fafc;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.data-table .row-actions {
+  width: 40px;
+  min-width: 40px;
+  padding: 4px !important;
+  text-align: center;
+}
+
+.data-table input {
+  width: 100%;
+  min-width: 80px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--color-surface);
+}
+
+.data-table input:focus {
+  outline: none;
+  border-color: var(--color-model);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.data-table input.cell-error {
+  border-color: var(--color-error);
+  background: #fef2f2;
+}
+
+.data-table input.cell-error::placeholder {
+  color: var(--color-error);
+}
+
+.validation-summary {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--color-error);
+}
+
+.validation-summary.hidden {
+  display: none;
+}
+
+/* Status bar */
+.status-bar {
+  padding: 8px 20px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.status-bar .error {
+  color: var(--color-error);
+}
+
+/* Modals */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  padding: 24px;
+  min-width: 320px;
+  max-width: 90vw;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal h3 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+}
+
+.modal input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-family: inherit;
+  margin-bottom: 16px;
+}
+
+.modal input[type="text"]:focus {
+  outline: none;
+  border-color: var(--color-model);
+}
+
+.modal p {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Delete row button */
+.btn-delete-row {
+  padding: 4px 8px;
+  font-size: 16px;
+  line-height: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.btn-delete-row:hover {
+  background: #fef2f2;
+  color: var(--color-error);
+}
