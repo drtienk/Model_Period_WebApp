@@ -15,7 +15,12 @@ const state = {
   isSelecting: false,
   editMode: false, // Select(false): 單擊只選取、readonly；Edit(true): 雙擊/F2/直接打字後可編輯
   cutCells: null,     // { sheet, cells, token, timestamp } 或 null；貼上成功後、Esc、新選取、開始輸入時清除
-  lastClipboardOp: null // "cut" | "copy" | null；doPaste 只有當 lastClipboardOp==="cut" 且 cutCells 存在時才清空來源
+  lastClipboardOp: null, // "cut" | "copy" | null；doPaste 只有當 lastClipboardOp==="cut" 且 cutCells 存在時才清空來源
+  // --- Undo/Redo (START) ---
+  undoStack: [],
+  redoStack: [],
+  _tx: null  // { id, label, changes: [] } 或 null
+  // --- Undo/Redo (END) ---
 };
 
 let _dragAnchor = null;
@@ -300,6 +305,7 @@ function doPaste() {
     var data = rows.map(function (line) { return line.split("\t"); });
     if (data.length === 0) return;
 
+    beginAction("Paste");
     var colCount = sheet.headers.length;
     var startRow = state.activeCell.row;
     var startCol = state.activeCell.col;
@@ -335,6 +341,7 @@ function doPaste() {
       });
       clearCutState();
     }
+    commitAction();
 
     if (addedRows > 0) {
       var saved = { active: state.activeCell, sel: state.selection, multi: state.multiSelection ? state.multiSelection.slice() : [] };
@@ -347,6 +354,7 @@ function doPaste() {
     }
   }).catch(function (e) {
     console.log("[doPaste] error", e);
+    state._tx = null;
     showStatus("Paste failed or denied", "error");
   });
 }
@@ -387,6 +395,9 @@ function loadStudentData(studentId) {
       const parsed = JSON.parse(saved);
       state.data = parsed.data || {};
       state.changeLog = parsed.changeLog || [];
+      state.undoStack = [];
+      state.redoStack = [];
+      state._tx = null;
       state.activeGroup = parsed.activeGroup || "ModelData";
       const order = getSheetsForWorkbook(state.activeGroup);
       state.activeSheet = order.includes(parsed.activeSheet) ? parsed.activeSheet : (order[0] || "Company");
@@ -407,6 +418,9 @@ function loadStudentData(studentId) {
 function initFromTemplate() {
   state.data = {};
   state.changeLog = [];
+  state.undoStack = [];
+  state.redoStack = [];
+  state._tx = null;
   for (const [sheetName, config] of Object.entries(TEMPLATE_DATA.sheets)) {
     if (!config.headers || config.headers.length === 0) {
       state.data[sheetName] = { headers: [], data: [] };
@@ -475,24 +489,101 @@ function autoSave() {
   saveTimeout = setTimeout(saveToStorage, 500);
 }
 
+// --- Undo/Redo helpers (START) ---
+function beginAction(label) {
+  state._tx = { id: Date.now(), label: label || "Edit", changes: [] };
+}
+function recordChange(sheetName, rowIndex, colIndex, oldValue, newValue) {
+  if (state._tx) {
+    state._tx.changes.push({ sheet: sheetName, row: rowIndex, col: colIndex, oldValue: oldValue, newValue: newValue });
+  } else {
+    var act = { id: Date.now(), label: "Edit", changes: [{ sheet: sheetName, row: rowIndex, col: colIndex, oldValue: oldValue, newValue: newValue }] };
+    state.undoStack.push(act);
+    clearRedo();
+  }
+}
+function commitAction() {
+  if (state._tx && state._tx.changes.length > 0) {
+    state.undoStack.push(state._tx);
+    clearRedo();
+  }
+  state._tx = null;
+}
+function clearRedo() {
+  state.redoStack = [];
+}
+function undo() {
+  if (state.undoStack.length === 0) { showStatus("Nothing to undo", ""); return; }
+  var action = state.undoStack.pop();
+  state.redoStack.push(action);
+  var last = action.changes[action.changes.length - 1];
+  for (var i = 0; i < action.changes.length; i++) {
+    var ch = action.changes[i];
+    if (ch.sheet !== state.activeSheet) {
+      state.activeSheet = ch.sheet;
+      var cfg = getSheetConfig(ch.sheet);
+      if (cfg && cfg.workbook) state.activeGroup = cfg.workbook;
+      renderAll();
+    }
+    updateCell(ch.sheet, ch.row, ch.col, ch.oldValue, { skipLog: true, skipUndo: true });
+    last = ch;
+  }
+  state.activeCell = { row: last.row, col: last.col };
+  state.selection = null;
+  state.multiSelection = [];
+  updateSelectionUI();
+  focusActiveCell();
+  showStatus("Undo", "");
+}
+function redo() {
+  if (state.redoStack.length === 0) { showStatus("Nothing to redo", ""); return; }
+  var action = state.redoStack.pop();
+  state.undoStack.push(action);
+  var last = action.changes[action.changes.length - 1];
+  for (var i = 0; i < action.changes.length; i++) {
+    var ch = action.changes[i];
+    if (ch.sheet !== state.activeSheet) {
+      state.activeSheet = ch.sheet;
+      var cfg = getSheetConfig(ch.sheet);
+      if (cfg && cfg.workbook) state.activeGroup = cfg.workbook;
+      renderAll();
+    }
+    updateCell(ch.sheet, ch.row, ch.col, ch.newValue, { skipLog: true, skipUndo: true });
+    last = ch;
+  }
+  state.activeCell = { row: last.row, col: last.col };
+  state.selection = null;
+  state.multiSelection = [];
+  updateSelectionUI();
+  focusActiveCell();
+  showStatus("Redo", "");
+}
+// --- Undo/Redo helpers (END) ---
+
 // --- Cell update & ChangeLog ---
 
-function updateCell(sheetName, rowIndex, colIndex, newValue) {
+function updateCell(sheetName, rowIndex, colIndex, newValue, opts) {
+  opts = opts || {};
+  var skipLog = opts.skipLog;
+  var skipUndo = opts.skipUndo;
   const sheet = state.data[sheetName];
   if (!sheet || !sheet.data[rowIndex]) return;
   const oldValue = sheet.data[rowIndex][colIndex];
   if (oldValue === newValue) return;
 
+  if (!skipUndo) recordChange(sheetName, rowIndex, colIndex, oldValue, newValue);
   sheet.data[rowIndex][colIndex] = newValue;
-  const excelSheetName = getExcelSheetName(sheetName);
+  if (!skipLog) {
+    const excelSheetName = getExcelSheetName(sheetName);
     state.changeLog.push({
-    timestamp: new Date().toISOString(),
-    sheet: excelSheetName,
-    row: rowIndex + 2,
-    column: sheet.headers[colIndex],
-    oldValue: oldValue,
-    newValue: newValue
-  });
+      timestamp: new Date().toISOString(),
+      sheet: excelSheetName,
+      row: rowIndex + 2,
+      column: sheet.headers[colIndex],
+      oldValue: oldValue,
+      newValue: newValue
+    });
+  }
   autoSave();
   updateValidation(sheetName, rowIndex, colIndex);
   var tbody = document.getElementById("tableBody");
@@ -1126,6 +1217,15 @@ function bindEvents() {
       selectAll();
       return;
     }
+    var isUndo = (e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === "z" || e.key === "Z");
+    var isRedo = (e.ctrlKey && e.key === "y") || (e.ctrlKey && e.shiftKey && (e.key === "z" || e.key === "Z")) || (e.metaKey && e.shiftKey && (e.key === "z" || e.key === "Z"));
+    if (isUndo || isRedo) {
+      if (e.isComposing) return;
+      if (inTable && state.editMode && hasTextSelection) return;
+      e.preventDefault();
+      if (isUndo) { undo(); return; }
+      if (isRedo) { redo(); return; }
+    }
     if (e.key === "Escape") {
       e.preventDefault();
       clearCutStateIfEditingIntent(e);
@@ -1202,9 +1302,11 @@ function bindEvents() {
       var inp = getActiveInput();
       if (!inp) return;
       if (e.key === "Backspace" || e.key === "Delete") {
+        beginAction("Clear");
         getSelectedCells().forEach(function (cell) {
           updateCell(state.activeSheet, cell.row, cell.col, "");
         });
+        commitAction();
       } else {
         state.editMode = true;
         inp.removeAttribute("readonly");
