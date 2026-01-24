@@ -399,7 +399,7 @@ function resetData() {
 
 function renderAll() {
   renderWorkbookToggle();
-  renderSheetTabs();
+  renderGroupedNav();
   renderTable();
 }
 
@@ -409,42 +409,16 @@ function renderWorkbookToggle() {
   });
 }
 
-function renderSheetTabs() {
-  const wrapper = document.getElementById("sheetTabsWrapper");
-  const sheetTabs = document.getElementById("sheetTabs");
-
-  if (state.activeGroup === "ModelData" && TEMPLATE_DATA.workbooks.ModelData.uiGroups) {
-    wrapper.classList.add("is-model");
-    renderGroupedNavForModelData();
-    return;
-  }
-
-  wrapper.classList.remove("is-model");
-  sheetTabs.innerHTML = "";
-  const order = getSheetsForWorkbook(state.activeGroup);
-  order.forEach(function (internalName) {
-    const config = getSheetConfig(internalName);
-    if (config && config.hidden) return;
-    const tab = document.createElement("button");
-    tab.type = "button";
-    tab.className = "sheet-tab" + (internalName === state.activeSheet ? " active" : "");
-    tab.textContent = getExcelSheetName(internalName);
-    tab.addEventListener("click", function () {
-      state.activeSheet = internalName;
-      renderAll();
-      autoSave();
-    });
-    sheetTabs.appendChild(tab);
-  });
-}
-
-function renderGroupedNavForModelData() {
+function renderGroupedNav() {
   const container = document.getElementById("groupedNav");
-  const uiGroups = TEMPLATE_DATA.workbooks.ModelData.uiGroups;
-  if (!container || !uiGroups) return;
+  if (!container) return;
+  const wbKey = state.activeGroup;
+  const wb = TEMPLATE_DATA.workbooks[wbKey];
+  const groups = wb && wb.uiGroups;
   container.innerHTML = "";
+  if (!groups || !groups.length) return;
 
-  uiGroups.forEach(function (grp) {
+  groups.forEach(function (grp) {
     const row = document.createElement("div");
     row.className = "nav-group-row";
 
@@ -465,6 +439,7 @@ function renderGroupedNavForModelData() {
       pill.className = "nav-pill" + (internalName === state.activeSheet ? " active" : "");
       pill.textContent = getExcelSheetName(internalName);
       pill.addEventListener("click", function () {
+        state.activeGroup = wbKey;
         state.activeSheet = internalName;
         renderAll();
         autoSave();

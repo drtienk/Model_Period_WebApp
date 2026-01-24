@@ -21,7 +21,14 @@ const TEMPLATE_DATA = {
       name: "Period Data",
       description: "Monthly Data",
       color: "#059669",
-      filename: "PeriodData"
+      filename: "PeriodData",
+      uiGroups: [
+        { key: "basic", label: "Basic Info", sheets: ["Exchange Rate"] },
+        { key: "m1", label: "Module 1", sheets: ["Resource", "Resource Driver(Actvity Center)", "Resource Driver(Value Object)", "Resource Driver(Machine)", "Resource Driver(M. A. C.)", "Resource Driver(S. A. C.)"] },
+        { key: "m2", label: "Module 2", sheets: ["Activity Center Driver(N. Cap.)", "Activity Center Driver(A. Cap.)"] },
+        { key: "m3", label: "Module 3", sheets: ["Activity Driver", "ProductProject Driver", "Manufacture Order"] },
+        { key: "m4", label: "Module 4", sheets: ["Manufacture Material", "Purchased Material and WIP", "Expected Project Value", "Sales Revenue ", "Revenue(InternalTransaction)NA", "Service Driver_Period", "Std. Workhour", "Std. Material(BOM)"] }
+      ]
     }
   },
 
