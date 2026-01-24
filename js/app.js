@@ -13,8 +13,9 @@ const state = {
   selection: null,
   multiSelection: [],
   isSelecting: false,
-  editMode: false,
-  cutCells: null
+  editMode: false, // Select(false): 單擊只選取、readonly；Edit(true): 雙擊/F2/直接打字後可編輯
+  cutCells: null,     // { sheet, cells, token, timestamp } 或 null；貼上成功後、Esc、新選取、開始輸入時清除
+  lastClipboardOp: null // "cut" | "copy" | null；doPaste 只有當 lastClipboardOp==="cut" 且 cutCells 存在時才清空來源
 };
 
 let _dragAnchor = null;
@@ -84,6 +85,7 @@ function updateSelectionUI() {
       if (el) el.classList.add("cell-selected");
     });
   }
+  // applyCutVisual: 僅在 cutCells.sheet === activeSheet 時加 .cell-cut（可與 .cell-selected 共存）
   if (state.cutCells && state.cutCells.cells && state.cutCells.sheet === state.activeSheet) {
     state.cutCells.cells.forEach(function (cell) {
       const el = getInputAt(cell.row, cell.col);
@@ -161,16 +163,72 @@ function getSelectedCells() {
   return [];
 }
 
+// getSelectedCellInputs: 單一真實來源，回傳已選取 cells 的 input 元素（含 active）；若無則 []，有選取時至少會回傳對應的 input
+function getSelectedCellInputs() {
+  var cells = getSelectedCells();
+  var out = [];
+  for (var i = 0; i < cells.length; i++) {
+    var inp = getInputAt(cells[i].row, cells[i].col);
+    if (inp) out.push(inp);
+  }
+  if (out.length === 0 && state.activeCell) {
+    var inp = getActiveInput();
+    if (inp) out.push(inp);
+  }
+  return out;
+}
+
+// clearCutState: 清除 cut 狀態與 .cell-cut；在貼上後、Esc、再次 Ctrl+X、Ctrl+C、開始輸入/Delete/Backspace 時呼叫
 function clearCutState() {
   state.cutCells = null;
   updateSelectionUI();
 }
 
-function doCopy() {
-  const cells = getSelectedCells();
-  if (cells.length === 0) return;
-  const sheet = state.data[state.activeSheet];
-  if (!sheet) return;
+// 只有「會改變內容」或「取消」時才清除 cut；點擊、導覽(Arrow/Enter/Tab)、F2、Ctrl+A 不 clear
+function clearCutStateIfEditingIntent(e) {
+  if (!e || !e.key) return;
+  if (e.key === "Escape") { clearCutState(); return; }
+  if (e.key === "Enter" && state.editMode) { clearCutState(); return; }
+  if (!state.editMode && (isPrintableKey(e) || e.key === "Backspace" || e.key === "Delete")) { clearCutState(); return; }
+}
+
+// --- 剪貼簿 helper：優先 clipboard API，失敗時 fallback execCommand / 提示 ---
+function writeClipboardText(text) {
+  if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
+    return fallbackCopyText(text);
+  }
+  return navigator.clipboard.writeText(text).then(function () { return true; }).catch(function () {
+    return fallbackCopyText(text);
+  });
+}
+function fallbackCopyText(text) {
+  try {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;left:-9999px;top:0;";
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return Promise.resolve(!!ok);
+  } catch (e) {
+    return Promise.resolve(false);
+  }
+}
+function readClipboardText() {
+  if (!navigator.clipboard || typeof navigator.clipboard.readText !== "function") {
+    showStatus("Paste denied. Click a cell then use browser paste (Ctrl+V) / allow clipboard permission", "error");
+    return Promise.resolve(null);
+  }
+  return navigator.clipboard.readText().then(function (t) { return t; }).catch(function () {
+    showStatus("Paste denied. Click a cell then use browser paste (Ctrl+V) / allow clipboard permission", "error");
+    return Promise.resolve(null);
+  });
+}
+
+function buildClipboardTextFromCells(cells) {
+  var sheet = state.data[state.activeSheet];
+  if (!sheet) return "";
   var byRow = {};
   cells.forEach(function (c) {
     if (!byRow[c.row]) byRow[c.row] = [];
@@ -178,43 +236,71 @@ function doCopy() {
   });
   Object.keys(byRow).forEach(function (r) { byRow[r].sort(function (a, b) { return a - b; }); });
   var rows = Object.keys(byRow).map(Number).sort(function (a, b) { return a - b; });
-  var lines = rows.map(function (row) {
+  return rows.map(function (row) {
     return byRow[row].map(function (col) {
       var v = (sheet.data[row] || [])[col];
       return v != null ? String(v) : "";
     }).join("\t");
-  });
-  var text = lines.join("\n");
-  console.log("[Copy]", text);
-  navigator.clipboard.writeText(text).catch(function () {
-    showStatus("Copy failed", "error");
+  }).join("\n");
+}
+
+function doCopy() {
+  var cells = getSelectedCells();
+  if (cells.length === 0) return;
+  var sheet = state.data[state.activeSheet];
+  if (!sheet) return;
+  var text = buildClipboardTextFromCells(cells);
+  console.log("[doCopy] cells=", cells.length);
+  writeClipboardText(text).then(function (ok) {
+    if (ok) {
+      state.lastClipboardOp = "copy";
+      console.log("[doCopy] write ok");
+    } else {
+      showStatus("Copy failed", "error");
+    }
   });
 }
 
+// handleCut: 先清舊 cut，寫入剪貼簿，成功才設定 cutCells + lastClipboardOp 並套 .cell-cut
 function doCut() {
-  doCopy();
-  state.cutCells = {
-    sheet: state.activeSheet,
-    cells: getSelectedCells().map(function (c) { return { row: c.row, col: c.col }; })
-  };
-  updateSelectionUI();
+  if (getSelectedCellInputs().length === 0) {
+    console.log("[doCut] no inputs, skip");
+    return;
+  }
+  clearCutState(); // 清掉舊 cut
+  var cells = getSelectedCells();
+  var text = buildClipboardTextFromCells(cells);
+  console.log("[doCut] cells=", cells.length, "sheet=", state.activeSheet);
+  writeClipboardText(text).then(function (ok) {
+    if (ok) {
+      state.cutCells = { sheet: state.activeSheet, cells: cells.map(function (c) { return { row: c.row, col: c.col }; }), token: Date.now(), timestamp: Date.now() };
+      state.lastClipboardOp = "cut";
+      updateSelectionUI();
+      console.log("[doCut] write ok, cut state set");
+    } else {
+      showStatus("Cut/Copy failed. Try again or allow clipboard permission.", "error");
+      console.log("[doCut] write failed");
+    }
+  });
 }
 
 function doPaste() {
-  navigator.clipboard.readText().then(function (text) {
+  readClipboardText().then(function (text) {
+    if (text === null) {
+      console.log("[doPaste] readText null/failed");
+      return;
+    }
     if (!state.activeCell) return;
-    const sheet = state.data[state.activeSheet];
+    var sheet = state.data[state.activeSheet];
     if (!sheet) return;
     if (!text || String(text).trim() === "") return;
-    console.log("[Paste] readText:", JSON.stringify(text));
+    console.log("[doPaste] start lastOp=", state.lastClipboardOp, "hasCut=", !!state.cutCells);
 
     var rows = text.split(/\r?\n/);
     var data = rows.map(function (line) { return line.split("\t"); });
-    console.log("[Paste] parsed data:", data);
     if (data.length === 0) return;
 
     var colCount = sheet.headers.length;
-
     var startRow = state.activeCell.row;
     var startCol = state.activeCell.col;
     var addedRows = 0;
@@ -234,9 +320,18 @@ function doPaste() {
       }
     }
 
-    if (state.cutCells && state.cutCells.sheet && state.cutCells.cells) {
+    // hook: 只有「貼上成功」且 lastClipboardOp==="cut" 且 cutCells 存在時，才清空剪下來源（並避免與貼上目標重疊）
+    if (state.lastClipboardOp === "cut" && state.cutCells && state.cutCells.sheet && state.cutCells.cells) {
+      var maxCol = data.reduce(function (m, r) { return Math.max(m, r.length); }, 0) || 0;
+      var endRow = startRow + data.length - 1;
+      var endCol = startCol + Math.max(0, maxCol - 1);
+      console.log("[doPaste] clearing cut sources, count=", state.cutCells.cells.length, "avoid overlap", startRow, startCol, endRow, endCol);
       state.cutCells.cells.forEach(function (c) {
-        updateCell(state.cutCells.sheet, c.row, c.col, "");
+        if (state.cutCells.sheet !== state.activeSheet) {
+          updateCell(state.cutCells.sheet, c.row, c.col, "");
+        } else if (c.row < startRow || c.row > endRow || c.col < startCol || c.col > endCol) {
+          updateCell(state.cutCells.sheet, c.row, c.col, "");
+        }
       });
       clearCutState();
     }
@@ -250,7 +345,8 @@ function doPaste() {
       updateSelectionUI();
       focusActiveCell();
     }
-  }).catch(function () {
+  }).catch(function (e) {
+    console.log("[doPaste] error", e);
     showStatus("Paste failed or denied", "error");
   });
 }
@@ -688,6 +784,7 @@ function renderGroupedNav() {
       pill.addEventListener("click", function () {
         state.activeGroup = wbKey;
         state.activeSheet = internalName;
+        clearCutState(); // 切 sheet 時清除 cut（不支援跨 sheet 保留）
         renderAll();
         autoSave();
       });
@@ -710,7 +807,8 @@ function renderTable() {
   state.multiSelection = [];
   state.isSelecting = false;
   state.editMode = false;
-  state.cutCells = null;
+  // 同一 sheet 的 renderTable（新增列、貼上 addedRows）不清 cut；切 sheet 的清 cut 改由切換處處理
+  // state.cutCells = null; 已移除
   _dragAnchor = null;
 
   document.getElementById("sheetTitle").textContent = getExcelSheetName(state.activeSheet);
@@ -846,6 +944,7 @@ function bindEvents() {
       state.activeGroup = wb;
       const order = getSheetsForWorkbook(wb);
       state.activeSheet = order[0] || "Company";
+      clearCutState(); // 切 workbook 時清除 cut
       renderAll();
       autoSave();
     });
@@ -881,13 +980,13 @@ function bindEvents() {
   });
 
   // --- Selection: mousedown (delegation on tbody) ---
+  // 點擊/框選/多選只換 active/selection，不 clear cut（Cut 後點目的地再貼上才可 move）
   document.getElementById("tableBody").addEventListener("mousedown", function (ev) {
     const input = ev.target.matches("input[data-row][data-col]")
       ? ev.target
       : (ev.target.closest && ev.target.closest("td") && ev.target.closest("td").querySelector("input[data-row][data-col]"));
     if (!input) return;
     ev.preventDefault();
-    clearCutState();
     const row = parseInt(input.dataset.row, 10);
     const col = parseInt(input.dataset.col, 10);
     const cell = { row: row, col: col };
@@ -951,6 +1050,7 @@ function bindEvents() {
     state.editMode = false;
     _dragAnchor = cell;
     updateSelectionUI();
+    focusActiveCell(); // Select 模式：blur 表格內 input，單擊不出現文字游標
   });
 
   document.getElementById("tableBody").addEventListener("dblclick", function (ev) {
@@ -958,6 +1058,12 @@ function bindEvents() {
       ? ev.target
       : (ev.target.closest && ev.target.closest("td") && ev.target.closest("td").querySelector("input[data-row][data-col]"));
     if (inp) {
+      clearCutState(); // 確定要開始編輯，視為放棄 cut 搬移
+      var row = parseInt(inp.dataset.row, 10);
+      var col = parseInt(inp.dataset.col, 10);
+      state.activeCell = { row: row, col: col };
+      state.selection = null;
+      state.multiSelection = [];
       state.editMode = true;
       inp.removeAttribute("readonly");
       inp.focus();
@@ -986,6 +1092,7 @@ function bindEvents() {
     focusActiveCell();
   });
 
+  // handleKeydown: Ctrl+C/X/V、Esc、Enter、Tab、方向鍵、F2、Select 下打字/Delete/Backspace
   document.addEventListener("keydown", function (e) {
     const ae = document.activeElement;
     var inTable = ae && ae.matches && ae.matches("input[data-row][data-col]") && ae.closest && ae.closest("#tableBody");
@@ -998,36 +1105,43 @@ function bindEvents() {
     const bounds = getDataBounds();
     if (bounds.rowCount === 0 || bounds.colCount === 0) return;
 
-    var hasTextSelection = (ae && ae.selectionStart != null) && (ae.selectionStart !== ae.selectionEnd);
+    // hasTextSelection：只有 inTable（Edit 模式）且 input 有反白才 true，避免 ae 不在 table 時誤判
+    var hasTextSelection = inTable && (ae && ae.selectionStart != null) && (ae.selectionStart !== ae.selectionEnd);
     var k = (e.key || "").toLowerCase();
 
     if ((e.ctrlKey || e.metaKey) && (k === "c" || k === "x" || k === "v")) {
-      if (hasTextSelection) return;
+      if (hasTextSelection) return; // 文字反白時讓瀏覽器原生剪下，不攔截
       if (k === "c") { e.preventDefault(); clearCutState(); doCopy(); return; }
-      if (k === "x") { e.preventDefault(); doCut(); return; }
+      if (k === "x") {
+        console.log("[keydown] Ctrl+X", { k: k, hasTextSelection: hasTextSelection, inTable: !!inTable });
+        e.preventDefault();
+        doCut();
+        return;
+      }
       if (k === "v") { e.preventDefault(); doPaste(); return; }
     }
 
     if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) {
       e.preventDefault();
-      clearCutState();
       selectAll();
       return;
     }
     if (e.key === "Escape") {
       e.preventDefault();
-      clearCutState();
+      clearCutStateIfEditingIntent(e);
       if (state.editMode) {
         state.editMode = false;
         var inp = getActiveInput();
         if (inp) { inp.setAttribute("readonly", "readonly"); inp.blur(); }
-        updateSelectionUI();
+        updateSelectionUI(); // exitEditMode：不改變選取
       }
       return;
     }
     if (e.key === "Enter" && state.editMode) {
       e.preventDefault();
-      clearCutState();
+      clearCutStateIfEditingIntent(e);
+      var inp = getActiveInput();
+      if (inp) updateCell(state.activeSheet, r, c, inp.value);
       state.editMode = false;
       updateSelectionUI();
       setActiveCell(Math.min(r + 1, bounds.rowCount - 1), c, { editMode: false });
@@ -1035,7 +1149,6 @@ function bindEvents() {
     }
     if (e.key === "Tab") {
       e.preventDefault();
-      clearCutState();
       var nr = r, nc = c + 1;
       if (nc >= bounds.colCount) { nr = r + 1; nc = 0; }
       if (nr >= bounds.rowCount) nr = 0;
@@ -1044,34 +1157,29 @@ function bindEvents() {
     }
     if (e.key === "Enter") {
       e.preventDefault();
-      clearCutState();
       var nr = Math.min(r + 1, bounds.rowCount - 1);
       setActiveCell(nr, c, { editMode: false });
       return;
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      clearCutState();
       setActiveCell(Math.max(0, r - 1), c, { editMode: false });
       return;
     }
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      clearCutState();
       setActiveCell(Math.min(bounds.rowCount - 1, r + 1), c, { editMode: false });
       return;
     }
     if (e.key === "ArrowLeft") {
       if (state.editMode && ae && (ae.selectionStart || 0) > 0) return;
       e.preventDefault();
-      clearCutState();
       setActiveCell(r, Math.max(0, c - 1), { editMode: false });
       return;
     }
     if (e.key === "ArrowRight") {
       if (state.editMode && ae && (ae.selectionStart || 0) < (ae.value || "").length) return;
       e.preventDefault();
-      clearCutState();
       setActiveCell(r, Math.min(bounds.colCount - 1, c + 1), { editMode: false });
       return;
     }
@@ -1079,7 +1187,7 @@ function bindEvents() {
       e.preventDefault();
       var inp = getActiveInput();
       if (inp) {
-        state.editMode = true;
+        state.editMode = true; // enterEditMode
         inp.removeAttribute("readonly");
         inp.focus();
         inp.setSelectionRange(inp.value.length, inp.value.length);
@@ -1087,13 +1195,16 @@ function bindEvents() {
       }
       return;
     }
+    // Select 模式：可輸入字元→清空 active 並輸入首字元進 Edit；Delete/Backspace→清空所有選取格；此為「會改變內容」→ clear cut
     if (!state.editMode && (isPrintableKey(e) || e.key === "Backspace" || e.key === "Delete")) {
       e.preventDefault();
-      clearCutState();
+      clearCutStateIfEditingIntent(e);
       var inp = getActiveInput();
       if (!inp) return;
       if (e.key === "Backspace" || e.key === "Delete") {
-        updateCell(state.activeSheet, r, c, "");
+        getSelectedCells().forEach(function (cell) {
+          updateCell(state.activeSheet, cell.row, cell.col, "");
+        });
       } else {
         state.editMode = true;
         inp.removeAttribute("readonly");
