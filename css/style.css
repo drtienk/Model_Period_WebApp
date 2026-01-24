@@ -383,6 +383,34 @@ body {
   color: var(--color-error);
 }
 
+/* 選取樣式：優先於預設與 :focus */
+.data-table input.cell-selected {
+  background: rgba(37, 99, 235, 0.1) !important;
+}
+
+.data-table input.cell-active,
+.data-table input.cell-active:focus {
+  border: 2px solid #2563eb !important;
+  background: #fff;
+  cursor: default;
+}
+
+.data-table input.cell-editing {
+  border: 2px solid #2563eb !important;
+  background: #fff;
+  cursor: text;
+}
+
+.data-table input[readonly] {
+  caret-color: transparent;
+  cursor: default;
+}
+
+.data-table input.cell-cut {
+  border: 2px dashed #f59e0b !important;
+  background: rgba(245, 158, 11, 0.1) !important;
+}
+
 .validation-summary {
   margin-top: 12px;
   font-size: 13px;
