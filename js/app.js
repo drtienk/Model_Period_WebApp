@@ -453,6 +453,7 @@ function renderGroupedNav() {
 }
 
 function renderTable() {
+  if (typeof clearTableSelection === "function") clearTableSelection();
   const sheet = state.data[state.activeSheet];
   const thead = document.getElementById("tableHead");
   const tbody = document.getElementById("tableBody");
