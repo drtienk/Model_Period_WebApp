@@ -914,6 +914,10 @@ function renderTable() {
 
   document.getElementById("btnAddRow").style.display = "";
 
+  if (sheet.headers && sheet.headers.length > 0 && (!sheet.data || sheet.data.length === 0)) {
+    sheet.data = [Array(sheet.headers.length).fill("")];
+  }
+
   const headers = sheet.headers;
   let thHtml = "<tr><th class=\"row-num\">#</th>";
   headers.forEach(function (h) {

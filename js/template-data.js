@@ -73,7 +73,7 @@ const TEMPLATE_DATA = {
     "Business Unit": {
       workbook: "ModelData",
       headers: ["Business Unit", "Description", "Currency", "Region"],
-      data: [["", "", "", ""], ["", "", "", ""], ["", "", "", ""]],
+      data: [["", "", "", ""]],
       required: ["Business Unit", "Currency"]
     },
     "Company Resource": {
