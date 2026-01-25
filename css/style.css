@@ -586,3 +586,51 @@ body {
   background: #fef2f2;
   color: var(--color-error);
 }
+
+/* Resource Driver(Actvity Center)：表頭 + Add Driver Code、Driver Code 3+ 的 × */
+.btn-add-driver {
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1;
+  border: 1px solid var(--color-border);
+  background: #f8fafc;
+  color: var(--color-text);
+  cursor: pointer;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.btn-add-driver:hover {
+  background: #f1f5f9;
+  border-color: var(--color-period);
+  color: var(--color-period);
+}
+
+.data-table th .th-del-driver {
+  margin-left: 4px;
+  padding: 2px 6px;
+  font-size: 14px;
+  line-height: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.data-table th .th-del-driver:hover {
+  background: #fef2f2;
+  color: var(--color-error);
+}
+
+.data-table th.th-has-del {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.data-table th.th-has-del .th-input {
+  flex: 1;
+  min-width: 0;
+}

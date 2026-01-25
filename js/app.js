@@ -1161,6 +1161,7 @@ function renderTable() {
   console.log("[headers]", state.activeSheet, sheet.headers);
   const isRDAC = (state.activeSheet === "Resource Driver(Actvity Center)");
   if (isRDAC) {
+    normalizeRowsToHeaders(sheet);
     thead.innerHTML = "";
     const tr = document.createElement("tr");
     tr.appendChild(createCell("th", "row-num", "#"));
@@ -1178,12 +1179,39 @@ function renderTable() {
           if (s && s.headers) { s.headers[colIndex] = inp.value; autoSave(); }
         });
         th.appendChild(inp);
+        var dm = String(h || "").match(/^Driver Code\s+(\d+)$/i);
+        if (dm && parseInt(dm[1], 10) >= 3) {
+          th.classList.add("th-has-del");
+          var delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "th-del-driver";
+          delBtn.textContent = "\u00D7";
+          delBtn.title = "Delete this Driver Code column";
+          delBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            deleteDriverCodeColumn(state.activeSheet, colIndex);
+          });
+          th.appendChild(delBtn);
+        }
       } else {
         th.textContent = (h != null) ? String(h) : "";
       }
       tr.appendChild(th);
     });
-    tr.appendChild(createCell("th", "row-actions", ""));
+    var actTh = document.createElement("th");
+    actTh.className = "row-actions";
+    var addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "btn-add-driver";
+    addBtn.textContent = "+ Add Driver Code";
+    addBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      addDriverCodeColumn(state.activeSheet);
+    });
+    actTh.appendChild(addBtn);
+    tr.appendChild(actTh);
     thead.appendChild(tr);
   } else {
     let thHtml = "<tr><th class=\"row-num\">#</th>";
@@ -1270,6 +1298,60 @@ function deleteRow(sheetName, rowIndex) {
   sheet.data.splice(rowIndex, 1);
   if (sheet.data.length === 0) {
     sheet.data.push(Array(sheet.headers.length).fill(""));
+  }
+  autoSave();
+  renderTable();
+}
+
+// --- Resource Driver(Actvity Center)：動態新增/刪除 Driver Code 欄位 ---
+
+function normalizeRowsToHeaders(sheetObj) {
+  if (!sheetObj || !sheetObj.headers) return;
+  const len = sheetObj.headers.length;
+  (sheetObj.data || []).forEach(function (row) {
+    if (row.length < len) {
+      while (row.length < len) row.push("");
+    } else if (row.length > len) {
+      row.splice(len, row.length - len);
+    }
+  });
+}
+
+function addDriverCodeColumn(sheetKey) {
+  if (sheetKey !== "Resource Driver(Actvity Center)") return;
+  const sheet = state.data[sheetKey];
+  if (!sheet || !sheet.headers) return;
+  var maxN = 0;
+  sheet.headers.forEach(function (h) {
+    var m = String(h || "").match(/^Driver Code\s+(\d+)$/i);
+    if (m) { var n = parseInt(m[1], 10); if (n > maxN) maxN = n; }
+  });
+  var nextN = maxN + 1;
+  sheet.headers.push("Driver Code " + nextN);
+  (sheet.data || []).forEach(function (row) { row.push(""); });
+  normalizeRowsToHeaders(sheet);
+  autoSave();
+  renderTable();
+}
+
+function deleteDriverCodeColumn(sheetKey, colIndex) {
+  if (sheetKey !== "Resource Driver(Actvity Center)") return;
+  const sheet = state.data[sheetKey];
+  if (!sheet || !sheet.headers || colIndex < 0 || colIndex >= sheet.headers.length) return;
+  var h = String(sheet.headers[colIndex] || "");
+  var m = h.match(/^Driver Code\s+(\d+)$/i);
+  if (!m || parseInt(m[1], 10) < 3) return; // 只許刪 Driver Code 3+
+  sheet.headers.splice(colIndex, 1);
+  (sheet.data || []).forEach(function (row) { row.splice(colIndex, 1); });
+  normalizeRowsToHeaders(sheet);
+  if (state.activeSheet === sheetKey) {
+    state.selection = null;
+    state.multiSelection = [];
+    if (state.activeCell) {
+      if (state.activeCell.col > colIndex) state.activeCell.col--;
+      else if (state.activeCell.col === colIndex) state.activeCell.col = Math.min(colIndex, sheet.headers.length - 1);
+      state.activeCell.col = Math.max(0, Math.min(state.activeCell.col, sheet.headers.length - 1));
+    }
   }
   autoSave();
   renderTable();
