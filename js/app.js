@@ -807,6 +807,93 @@ function downloadWorkbook(workbookKey, timestamp) {
     } else {
       XLSX.utils.book_append_sheet(wb, itemWs, "Item");
     }
+
+    // PeriodData：覆蓋 "TableMapping" 工作表為固定系統對照表（headers + 74 列），確保下載時永遠是正確內容
+    var TM_HEADERS = ["Table", "Table欄位名稱", "Excel 中文欄位名稱", "Excel 英文欄位名稱"];
+    var TM_DATA = [
+      ["ExExchangeRate", "BusinessUnitCurrency", "事業單位幣別", "Business Unit Currency"],
+      ["ExExchangeRate", "CompanyCurrency", "公司幣別", "Company Currency"],
+      ["ExExchangeRate", "ExchangeRate", "匯率值", "Exchange Rate"],
+      ["ExResource", "BusinessUnitNo", "事業單位", "Business Unit"],
+      ["ExResource", "ResourceNo", "資源代碼", "Resource Code"],
+      ["ExResource", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+      ["ExResource", "Amount", "金額", "Amount"],
+      ["ExResource", "ValueObjectType", "價值標的類別", "Value Object Type"],
+      ["ExResource", "ValueObjectNo", "價值標的代碼", "Value Object Code"],
+      ["ExResource", "MachineGroupNo", "機台代碼", "Machine Code"],
+      ["ExResource", "ProductNo", "產品代碼", "Product Code"],
+      ["ExResourceDriverAC", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+      ["ExResourceDriverValueObject", "BusinessUnitNo", "事業單位", "Business Unit"],
+      ["ExResourceDriverValueObject", "ValueObjectType", "價值標的類別", "Value Object Type"],
+      ["ExResourceDriverValueObject", "ValueObjectNo", "價值標的代碼", "Value Object Code"],
+      ["ExResourceDriverMachine", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+      ["ExResourceDriverMachine", "MachineGroupNo", "機台代碼", "Machine Code"],
+      ["ExResourceDriverManagementAC", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+      ["ExResourceDriverManagementAC", "MachineGroupNo", "機台代碼", "Machine Code"],
+      ["ExResourceDriverSupportingAC", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+      ["ExResourceDriverSupportingAC", "MachineGroupNo", "機台代碼", "Machine Code"],
+      ["ExACDriverNormalCapacity", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+      ["ExACDriverNormalCapacity", "MachineGroupNo", "機台代碼", "Machine Code"],
+      ["ExACDriverNormalCapacity", "ActivityNo", "作業代碼", "Activity Code"],
+      ["ExACDriverNormalCapacity", "NormalCapacityHours", "正常產能時間", "Normal Capacity Hours"],
+      ["ExACDriverActualCapacity", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+      ["ExACDriverActualCapacity", "MachineGroupNo", "機台代碼", "Machine Code"],
+      ["ExACDriverActualCapacity", "SupportedActivityCenterNo", "受援作業中心代碼", "Supported Activity Center Code"],
+      ["ExACDriverActualCapacity", "ActivityNo", "作業代碼", "Activity Code"],
+      ["ExACDriverActualCapacity", "ActualCapacityHours", "實際產能時間", "Actual Capacity Hours"],
+      ["ExACDriverActualCapacity", "ValueObjectNo", "價值標的代碼", "Value Object Code"],
+      ["ExACDriverActualCapacity", "ValueObjectType", "價值標的類別", "Value Object Type"],
+      ["ExACDriverActualCapacity", "ProductNo", "產品代碼", "Product Code"],
+      ["ExActivityDriver", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+      ["ExActivityDriver", "MachineGroupNo", "機台代碼", "Machine Code"],
+      ["ExActivityDriver", "ActivityNo", "作業代碼", "Activity Code"],
+      ["ExActivityDriver", "ActivityDriverNo", "作業動因", "Activity Driver"],
+      ["ExActivityDriver", "ActivityDriverValue", "作業動因值", "Activity Driver Value"],
+      ["ExActivityDriver", "ValueObjectNo", "價值標的代碼", "Value Object Code"],
+      ["ExActivityDriver", "ValueObjectType", "價值標的類別", "Value Object Type"],
+      ["ExActivityDriver", "ProductNo", "產品代碼", "Product Code"],
+      ["ExProductProjectDriver", "ProductNo", "產品代碼", "Product Code"],
+      ["ExProductProjectDriver", "ProjectDriverNo", "專案動因", "Project Driver"],
+      ["ExProductProjectDriver", "ProjectDriverValue", "專案動因值", "Project Driver Value"],
+      ["ExManufactureOrder", "BusinessUnitNo", "事業單位", "Business Unit"],
+      ["ExManufactureOrder", "MO", "製令", "MO"],
+      ["ExManufactureOrder", "ProductNo", "產品", "Product Code"],
+      ["ExManufactureOrder", "Quantity", "完工數量(PC)", "Quantity"],
+      ["ExManufactureOrder", "Closed", "製令關閉", "Closed"],
+      ["ExManufactureMaterial", "BusinessUnitNo", "事業單位", "Business Unit"],
+      ["ExManufactureMaterial", "MO", "製令", "MO"],
+      ["ExManufactureMaterial", "MaterialNo", "材料", "Material Code"],
+      ["ExManufactureMaterial", "Quantity", "用料數量", "Quantity"],
+      ["ExManufactureMaterial", "Amount", "購入金額", "Amount"],
+      ["ExPurchasedMaterialAndWIP", "BusinessUnitNo", "事業單位", "Business Unit"],
+      ["ExPurchasedMaterialAndWIP", "MaterialNo", "料號", "Material Code"],
+      ["ExPurchasedMaterialAndWIP", "Quantity", "本期數量", "Quantity"],
+      ["ExPurchasedMaterialAndWIP", "Amount", "本期總金額", "Amount"],
+      ["ExPurchasedMaterialAndWIP", "EndInventoryQty", "期末庫存數量", "End Inventory Qty"],
+      ["ExPurchasedMaterialAndWIP", "Unit", "單位", "Unit"],
+      ["ExPurchasedMaterialAndWIP", "EndInventoryAmount", "期末庫存金額", "End Inventory Amount"],
+      ["ExExpectedProjectValue", "ProjectNo", "專案代碼", "Project Code"],
+      ["ExExpectedProjectValue", "TotalProjectDriverValue", "預估專案動因總值", "Total Project Driver Value"],
+      ["ExSalesRevenue", "OrderNo", "訂單編號", "Order No"],
+      ["ExSalesRevenue", "CustomerNo", "顧客代碼", "Customer Code"],
+      ["ExSalesRevenue", "ProductNo", "產品代碼", "Product Code"],
+      ["ExSalesRevenue", "Quantity", "數量", "Quantity"],
+      ["ExSalesRevenue", "Amount", "收入金額", "Amount"],
+      ["ExSalesRevenue", "SalesActivityCenterNo", "銷售作業中心代碼", "Sales Activity Center Code"],
+      ["ExSalesRevenue", "ShipmentBusinessUnitNo", "出貨事業單位", "Shipment Business Unit"],
+      ["ExServiceDriver", "BusinessUnitNo", "事業單位", "Business Unit"],
+      ["ExServiceDriver", "CustomerNo", "顧客代碼", "Customer Code"],
+      ["ExServiceDriver", "ProductNo", "產品代碼", "Product Code"]
+    ];
+    var tmAoA = [TM_HEADERS].concat(TM_DATA).map(function (row) {
+      return row.map(function (c) { return String(c == null ? "" : c).trim(); });
+    });
+    var tmWs = XLSX.utils.aoa_to_sheet(tmAoA);
+    if (wb.SheetNames.indexOf("TableMapping") !== -1) {
+      wb.Sheets["TableMapping"] = tmWs;
+    } else {
+      XLSX.utils.book_append_sheet(wb, tmWs, "TableMapping");
+    }
   }
 
   // ModelData：指定分頁在輸出的 Excel 中預設為 Hidden（Hidden: 1 = hidden，非 veryHidden）
