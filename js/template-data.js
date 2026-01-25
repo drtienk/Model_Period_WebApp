@@ -348,8 +348,8 @@ const TEMPLATE_DATA = {
     },
     "Resource": {
       workbook: "PeriodData",
-      headers: ["Business Unit", "Resource Code", "Activity Center Code", "Amount", "Value Object Type", "Value Object Code", "Machine Code", "Product Code"],
-      data: Array(20).fill(0).map(function () { return Array(8).fill(""); }),
+      headers: ["Business Unit", "Resource Code", "(Resource description)", "Activity Center Code", "(Activity center description)", "Amount", "Value Object Type", "Value Object Code", "Machine Code", "Product Code"],
+      data: Array(20).fill(0).map(function () { return Array(10).fill(""); }),
       required: ["Business Unit", "Resource Code", "Amount"]
     },
     "Resource Driver(Actvity Center)": {
