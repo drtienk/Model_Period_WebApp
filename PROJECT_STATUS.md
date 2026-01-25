@@ -5,7 +5,7 @@
 
 ---
 
-## 1. 專案一句話說明（給新手看）
+## 1. 專案一句話說明（給完全新手看）
 
 這是一個「Excel 教學用表單」：使用者先輸入學號，接著在瀏覽器裡像操作 Excel 一樣，編輯兩大本「工作簿」（Model Data、Period Data）底下的多張工作表；每張表都是可輸入的表格，可新增／刪除列、複製／剪下／貼上、上傳或下載 xlsx 檔，資料會依學號自動存到瀏覽器的本機儲存（localStorage）。一切都在前端完成，不連後端也不連資料庫。
 
@@ -32,9 +32,9 @@
 | **css/style.css** | 全站樣式：按鈕、表格、input、必填星號、選取/編輯/cut 的樣式、modal、分頁、狀態列等。 | ✅ 是 | 改按鈕長相、表格邊框、顏色、版面、modal 樣式等 UI 時。 |
 | **js/template-data.js** | 單一真相來源：`TEMPLATE_DATA`（workbooks、sheets 的 headers / data / required / hidden / 匯出規則等），以及 `getSheetsForWorkbook`、`getSheetConfig`、`isRequired`、`getExcelSheetName`、`getInternalSheetName`。 | ✅ 是 | 要新增/刪除工作表、改欄位名稱、改預設資料、改必填欄位、改 Excel 匯出時的工作表名稱或隱藏/系統表規則時。 |
 | **js/app.js** | 應用主邏輯：`state`、初始化、學號 modal、localStorage 讀寫、`renderAll` / `renderTable` / `renderGroupedNav`、選取（單格、框選、Ctrl+點多選、Shift+範圍）、編輯模式、剪貼（Copy/Cut/Paste）、Undo/Redo、儲存格更新與驗證、上傳 xlsx、下載 xlsx、Reset、Add/Delete 列、鍵盤與滑鼠事件綁定。 | ✅ 是 | 改表格行為、選取邏輯、剪貼、Undo/Redo、上傳/下載流程、驗證邏輯、自動儲存、或任何「做什麼」的流程時。 |
-| **_archive/legacy_grid_system/**（含 selection_events.js、table_core.js、table_render_core.js） | 舊架構（contentEditable + #gridHead/#gridBody + DEFS.SELECTION_CORE），已歸檔。**移動日期**：2026-01-25。**新路徑**：`_archive/legacy_grid_system/`。**說明**：此三支檔案為舊架構，非現行系統使用，僅保留作參考。 | ❌ 否 | 僅在需要查閱舊實作時；現行開發勿改。 |
+| **_archive/legacy_grid_system/**（含 selection_events.js、table_core.js、table_render_core.js） | 舊架構（contentEditable + #gridHead/#gridBody + DEFS.SELECTION_CORE），已歸檔。移動日期：2026-01-25。說明：此三支檔案為舊架構，非現行系統使用，僅保留作參考。 | ❌ 否 | 僅在需要查閱舊實作時；現行開發勿改。 |
 
-**補充**：真正在跑的只有 **index.html、css/style.css、js/template-data.js、js/app.js**，以及 CDN 的 xlsx。原 `selection_events.js`、`table_core.js`、`table_render_core.js` 已於 2026-01-25 移至 `_archive/legacy_grid_system/`，屬舊架構，非現行系統使用。
+**補充**：真正在跑的只有 **index.html、css/style.css、js/template-data.js、js/app.js**，以及 CDN 的 xlsx。後續修改時，原則上避免一直新增新的 JS 檔案；優先在既有檔案內擴充或調整。
 
 ---
 
@@ -80,9 +80,9 @@
 
 ---
 
-## 6.「之後要怎麼改 code」的導航說明（關鍵章節）
+## 6.「之後要怎麼改 code」的導航說明
 
-### 表格行為 / Excel-like 操作
+### 如果要改「表格 / Excel-like 行為」，通常要看哪幾個檔案？
 
 - **選取、編輯、鍵盤、剪貼**：幾乎都在 **`js/app.js`**。  
   - 選取與 UI：`getDataBounds`、`getInputAt`、`updateSelectionUI`、`setActiveCell`、`focusActiveCell`、`getCellFromPoint`、`rectFromTwoPoints`、`selectAll`、`getSelectedCells`、`getSelectedCellInputs`。  
@@ -92,18 +92,18 @@
 - **表格長相（欄、列、input 怎麼畫）**：**`js/app.js`** 的 `renderTable`（thead/th、tbody/tr/td/input、row-num、row-actions、delete 鈕）。  
 - **欄位與預設結構**：**`js/template-data.js`** 的 `TEMPLATE_DATA.sheets`（headers、data、required、hidden、export 相關）、`getSheetConfig`、`isRequired`。
 
-### UI（按鈕、版面、樣式）
+### 如果要改 UI（按鈕、版面、樣式），應該從哪裡下手？
 
 - **版面與元件**：**`index.html`**（header、toolbar、sheet 區、main、modals、`#tableHead`/`#tableBody`）。  
 - **樣式**：**`css/style.css`**（`:root` 變數、.btn、.workbook-btn、.nav-pill、.data-table、input、.cell-active、.cell-selected、.cell-cut、.cell-editing、.cell-error、.modal-overlay、.status-bar 等）。
 
-### 高度耦合、風險高，不應隨便動
+### 哪些檔案或區域是高度耦合、風險高，不應隨便動？
 
 - **`js/app.js`**：同時負責 state、init、render、選取、編輯、剪貼、鍵盤、驗證、Undo/Redo、上傳、下載、Reset、儲存，且直接依賴 `state`、`getInputAt`、`#tableHead`/`#tableBody` 的 DOM 結構。改選取或編輯時，易牽動 `updateSelectionUI`、`bindEvents` 的 keydown、以及 `updateCell`/`renderTable`。  
 - **`js/template-data.js`**：`getSheetConfig`、`getExcelSheetName`、`getInternalSheetName`、`isRequired` 被 app.js 與下載/上傳邏輯廣用；欄位名、`sheetNameInExcel`、`hidden`、`exportAsBlank`、`exportUseTemplate` 等一改就會影響畫面、驗證、匯入匯出。  
 - **`state` 的形狀**：`activeCell`、`selection`、`multiSelection`、`editMode`、`cutCells`、`lastClipboardOp`、`undoStack`、`redoStack`、`_tx` 等被多處讀寫；增刪或改名要全局搜尋。
 
-### 整個 App 的進入點（初始化流程）
+### 整個 App 的進入點（初始化流程）在哪裡？
 
 - **`index.html`** 依序載入：xlsx CDN → `js/template-data.js` → `js/app.js`。  
 - **`js/app.js`** 結尾：若已有 `XLSX` 則直接 `init()`，否則在 `DOMContentLoaded` 後再 `init()`。  
@@ -113,16 +113,6 @@
 
 ---
 
-## 重要開發原則（必須遵守）
+## 7. 待釐清問題清單
 
-- 本專案為 **純前端 Web App**，無後端、無 API、無資料庫。  
-- 後續修改時，**避免一直新增新的 JS 檔案**；優先在 **`app.js`、`template-data.js`、`style.css`、`index.html`** 既有結構內擴充或調整行為。  
-- 此文件的目的，是讓 AI 或接手者知道 **「要去哪裡改」**，不是一般性教學文件。
-
----
-
-## 待釐清問題清單
-
-1. ~~**`js/selection_events.js`、`js/table_core.js`、`js/table_render_core.js` 未在 `index.html` 中載入**……~~ **【已處理】** 2026-01-25 已將三支檔案移至 `_archive/legacy_grid_system/`。說明：此三支檔案為舊架構，非現行系統使用，僅保留作參考。
-
-2. ~~若 `selection_events.js` / `table_core.js` / `table_render_core.js` 未來確定不採用，是否要從專案中移除或移到 `_archive` 等目錄……~~ **【已處理】** 已移入 `_archive/legacy_grid_system/`（移動日期：2026-01-25；新路徑：`_archive/legacy_grid_system/`）。
+（目前無。若閱讀程式碼時發現無法從現有內容判斷用途的區塊、或存在但未被使用的檔案／架構，請列於此反問。）
