@@ -675,11 +675,15 @@ function downloadExcel() {
     return;
   }
   const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
-  downloadWorkbook("ModelData", timestamp);
-  setTimeout(function () {
-    downloadWorkbook("PeriodData", timestamp);
-  }, 500);
-  showStatus("Downloaded both files");
+  const wbKey = state.activeGroup;
+  downloadWorkbook(wbKey, timestamp);
+  if (wbKey === "ModelData") {
+    showStatus("Downloaded ModelData file");
+  } else if (wbKey === "PeriodData") {
+    showStatus("Downloaded PeriodData file");
+  } else {
+    showStatus("Downloaded " + wbKey + " file");
+  }
 }
 
 function downloadWorkbook(workbookKey, timestamp) {
@@ -865,6 +869,10 @@ function renderWorkbookToggle() {
   document.querySelectorAll(".workbook-btn").forEach(function (btn) {
     btn.classList.toggle("active", btn.getAttribute("data-workbook") === state.activeGroup);
   });
+  var btnDownload = document.getElementById("btnDownload");
+  if (btnDownload) {
+    btnDownload.textContent = state.activeGroup === "ModelData" ? "Download Model Data" : "Download Period Data";
+  }
 }
 
 function renderGroupedNav() {
