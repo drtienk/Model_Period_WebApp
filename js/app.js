@@ -428,7 +428,11 @@ function initFromTemplate() {
     }
     state.data[sheetName] = {
       headers: [...config.headers],
-      data: config.data.map(row => [...row])
+      data: sheetName === "Company Resource"
+        ? Array(20).fill(0).map(function () { return Array(config.headers.length).fill(""); })
+        : sheetName === "Activity Center"
+          ? Array(10).fill(0).map(function () { return Array(config.headers.length).fill(""); })
+          : config.data.map(row => [...row])
     };
   }
   state.activeGroup = "ModelData";
