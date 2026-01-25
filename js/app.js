@@ -724,9 +724,21 @@ function downloadWorkbook(workbookKey, timestamp) {
       headers = config.headers;
       data = config.data || [];
     } else {
-      if (!sheet) return;
-      headers = sheet.headers;
-      data = sheet.data;
+      if (!sheet) {
+        if (internalName === "List setting" && config.headers && config.headers.length > 0) {
+          headers = config.headers;
+          data = (config.data && config.data.length > 0) ? config.data : [Array(config.headers.length).fill("")];
+        } else {
+          return;
+        }
+      } else {
+        headers = sheet.headers;
+        data = sheet.data;
+        if (internalName === "List setting") {
+          if (!headers || !Array.isArray(headers) || headers.length === 0) headers = config.headers || [];
+          if (!data || !Array.isArray(data) || data.length === 0) data = [Array((headers || config.headers || []).length).fill("")];
+        }
+      }
     }
     const wsData = [headers].concat(data);
     const ws = XLSX.utils.aoa_to_sheet(wsData);
