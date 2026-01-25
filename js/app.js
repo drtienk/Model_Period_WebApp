@@ -669,7 +669,7 @@ function validateCell(sheetName, rowIndex, colIndex) {
 
 // --- Download (TWO files) ---
 
-var SYSTEM_EXPORT_SHEETS = new Set(["Item<IT使用>", "TableMapping<IT使用>", "List_Item<IT使用>"]);
+var SYSTEM_EXPORT_SHEETS = new Set(["Item<IT使用>", "TableMapping<IT使用>", "List_Item<IT使用>", "Remark"]);
 
 function downloadExcel() {
   if (!state.studentId) {
