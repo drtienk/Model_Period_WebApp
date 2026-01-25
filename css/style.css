@@ -276,6 +276,28 @@ body {
   border-color: #2563eb;
 }
 
+.nav-pill-muted {
+  background-color: #fff;
+  color: #999;
+  border-color: #ddd;
+  cursor: default;
+}
+.nav-pill-muted:hover {
+  background-color: #fff;
+  color: #999;
+  border-color: #ddd;
+}
+.nav-pill-muted.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+.nav-pill-muted.active:hover {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
 /* Main content */
 .main {
   flex: 1;

@@ -932,6 +932,9 @@ function renderGroupedNav() {
       const pill = document.createElement("button");
       pill.type = "button";
       pill.className = "nav-pill" + (internalName === state.activeSheet ? " active" : "");
+      if (wbKey === "ModelData" && ["Machine(Activity Center Driver)", "Material", "ProductProject"].indexOf(internalName) !== -1) {
+        pill.classList.add("nav-pill-muted");
+      }
       pill.textContent = getExcelSheetName(internalName);
       pill.addEventListener("click", function () {
         state.activeGroup = wbKey;
