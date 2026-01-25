@@ -379,6 +379,7 @@ const TEMPLATE_DATA = {
     },
     "Resource Driver(S. A. C.)": {
       workbook: "PeriodData",
+      headerRows: ["headers", "headers2", "headers3"],
       headers: ["Activity Center Code", "Machine Code", "Driver 1", "Driver 2", "Driver 3", "Driver 4", "Driver 5", "Driver 6"],
       data: Array(8).fill(0).map(function () { return Array(8).fill(""); }),
       required: ["Activity Center Code"]

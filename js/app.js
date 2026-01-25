@@ -466,12 +466,25 @@ function initFromTemplate() {
     state.data[sheetName] = { headers: headers, data: data };
   }
   ensureMACHeaderRows();
+  ensureSACHeaderRows();
   state.activeGroup = "ModelData";
   state.activeSheet = "Company";
 }
 
 function ensureMACHeaderRows() {
   var s = state.data["Resource Driver(M. A. C.)"];
+  if (!s || !s.headers) return;
+  var L = s.headers.length;
+  if (!s.headers2) s.headers2 = [];
+  while (s.headers2.length < L) s.headers2.push("");
+  if (s.headers2.length > L) s.headers2.splice(L, s.headers2.length - L);
+  if (!s.headers3) s.headers3 = [];
+  while (s.headers3.length < L) s.headers3.push("");
+  if (s.headers3.length > L) s.headers3.splice(L, s.headers3.length - L);
+}
+
+function ensureSACHeaderRows() {
+  var s = state.data["Resource Driver(S. A. C.)"];
   if (!s || !s.headers) return;
   var L = s.headers.length;
   if (!s.headers2) s.headers2 = [];
@@ -499,6 +512,7 @@ function ensureAllSheets() {
     }
   }
   ensureMACHeaderRows();
+  ensureSACHeaderRows();
 }
 
 // --- Student Modal ---
@@ -779,6 +793,12 @@ function downloadWorkbook(workbookKey, timestamp) {
       var row2 = []; for (var i = 0; i < sheet.headers.length; i++) row2.push(i < 3 ? "" : (sheet.headers2[i] || ""));
       var row3 = []; for (var i = 0; i < sheet.headers.length; i++) row3.push(i < 3 ? "" : (sheet.headers3[i] || ""));
       wsData = [row1, row2, row3].concat(sheet.data);
+    } else if (internalName === "Resource Driver(S. A. C.)" && config.headerRows && sheet) {
+      ensureSACHeaderRows();
+      var row1 = sheet.headers;
+      var row2 = []; for (var i = 0; i < sheet.headers.length; i++) row2.push(i < 3 ? "" : (sheet.headers2[i] || ""));
+      var row3 = []; for (var i = 0; i < sheet.headers.length; i++) row3.push(i < 3 ? "" : (sheet.headers3[i] || ""));
+      wsData = [row1, row2, row3].concat(sheet.data);
     } else {
       wsData = [headers].concat(data);
     }
@@ -1005,6 +1025,25 @@ function uploadBackup(file) {
             state.data[internalName] = { headers: finalH, headers2: finalH2, headers3: finalH3, data: nd.length > 0 ? nd : [Array(colCount).fill("")] };
             return;
           }
+          if (internalName === "Resource Driver(S. A. C.)" && config.headerRows) {
+            var colCount, finalH, finalH2, finalH3, nd;
+            if (jsonData.length >= 3 && Array.isArray(jsonData[0]) && Array.isArray(jsonData[1]) && Array.isArray(jsonData[2])) {
+              var r0 = jsonData[0], r1 = jsonData[1], r2 = jsonData[2];
+              colCount = Math.max(r0.length, r1.length, r2.length, (templateHeaders || []).length);
+              finalH = []; for (var i = 0; i < colCount; i++) finalH.push((r0[i] != null) ? String(r0[i]).trim() : "");
+              finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
+              finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
+              nd = jsonData.slice(3).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n.slice(0, colCount); });
+            } else {
+              var row0 = Array.isArray(jsonData[0]) ? jsonData[0] : [];
+              colCount = Math.max(row0.length, (templateHeaders || []).length);
+              finalH = []; for (var i = 0; i < colCount; i++) finalH.push((row0[i] != null) ? String(row0[i]).trim() : "");
+              finalH2 = Array(colCount).fill(""); finalH3 = Array(colCount).fill("");
+              nd = jsonData.slice(1).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n.slice(0, colCount); });
+            }
+            state.data[internalName] = { headers: finalH, headers2: finalH2, headers3: finalH3, data: nd.length > 0 ? nd : [Array(colCount).fill("")] };
+            return;
+          }
 
           var finalHeaders = templateHeaders;
           if (internalName === "Resource Driver(Actvity Center)") {
@@ -1204,6 +1243,7 @@ function renderTable() {
   console.log("[headers]", state.activeSheet, sheet.headers);
   const isRDAC = (state.activeSheet === "Resource Driver(Actvity Center)");
   const isMAC = (state.activeSheet === "Resource Driver(M. A. C.)" && config.headerRows);
+  const isSAC = (state.activeSheet === "Resource Driver(S. A. C.)" && config.headerRows);
   if (isRDAC) {
     thead.innerHTML = "";
     const tr = document.createElement("tr");
@@ -1367,6 +1407,109 @@ function renderTable() {
       tr3.appendChild(th);
     }
     thead.appendChild(tr3);
+  } else if (isSAC) {
+    ensureSACHeaderRows();
+    thead.innerHTML = "";
+    var h2 = sheet.headers2 || [];
+    var h3 = sheet.headers3 || [];
+    var tr1 = document.createElement("tr");
+    var thNum = document.createElement("th");
+    thNum.className = "row-num";
+    thNum.setAttribute("rowspan", "3");
+    thNum.textContent = "#";
+    tr1.appendChild(thNum);
+    for (var c = 0; c < 3; c++) {
+      var th = document.createElement("th");
+      th.setAttribute("rowspan", "3");
+      th.textContent = (headers[c] != null) ? String(headers[c]) : "";
+      if (isRequired(state.activeSheet, headers[c])) th.classList.add("required");
+      tr1.appendChild(th);
+    }
+    for (var c = 3; c < headers.length; c++) {
+      var th = document.createElement("th");
+      if (isRequired(state.activeSheet, headers[c])) th.classList.add("required");
+      var inp = document.createElement("input");
+      inp.className = "th-input";
+      inp.type = "text";
+      inp.value = (headers[c] != null) ? String(headers[c]) : "";
+      inp.addEventListener("input", function (idx) {
+        return function () {
+          var s = state.data[state.activeSheet];
+          if (s && s.headers) { s.headers[idx] = inp.value; autoSave(); }
+        };
+      }(c));
+      if (c === 3) {
+        var wrap = document.createElement("span");
+        wrap.className = "th-dc2-wrap";
+        wrap.appendChild(inp);
+        var btnAdd = document.createElement("button");
+        btnAdd.type = "button";
+        btnAdd.className = "btn-add-column";
+        btnAdd.textContent = "+";
+        btnAdd.title = "Add Driver column";
+        btnAdd.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); addDriverCodeColumnSAC(); });
+        wrap.appendChild(btnAdd);
+        th.appendChild(wrap);
+      } else if (c >= 8) {
+        var wrap = document.createElement("span");
+        wrap.className = "th-dc2-wrap";
+        wrap.appendChild(inp);
+        var btnDel = document.createElement("button");
+        btnDel.type = "button";
+        btnDel.className = "btn-delete-column";
+        btnDel.textContent = "\u00D7";
+        btnDel.title = "Delete Driver column";
+        btnDel.addEventListener("click", (function (col) { return function (e) { e.stopPropagation(); e.preventDefault(); deleteDriverCodeColumnSAC(col); }; })(c));
+        wrap.appendChild(btnDel);
+        th.appendChild(wrap);
+      } else {
+        th.appendChild(inp);
+      }
+      tr1.appendChild(th);
+    }
+    var thAct = document.createElement("th");
+    thAct.className = "row-actions";
+    thAct.setAttribute("rowspan", "3");
+    tr1.appendChild(thAct);
+    thead.appendChild(tr1);
+    var tr2 = document.createElement("tr");
+    for (var c = 3; c < headers.length; c++) {
+      var th = document.createElement("th");
+      var inp = document.createElement("input");
+      inp.className = "th-input";
+      inp.type = "text";
+      inp.value = (h2[c] != null) ? String(h2[c]) : "";
+      inp.addEventListener("input", function (idx) {
+        return function () {
+          var s = state.data[state.activeSheet];
+          if (!s.headers2) s.headers2 = [];
+          s.headers2[idx] = inp.value;
+          autoSave();
+        };
+      }(c));
+      th.appendChild(inp);
+      tr2.appendChild(th);
+    }
+    thead.appendChild(tr2);
+    var tr3 = document.createElement("tr");
+    for (var c = 3; c < headers.length; c++) {
+      var th = document.createElement("th");
+      var inp = document.createElement("input");
+      inp.className = "th-input";
+      inp.type = "text";
+      inp.value = (h3[c] != null) ? String(h3[c]) : "";
+      inp.addEventListener("input", function (idx) {
+        return function () {
+          var s = state.data[state.activeSheet];
+          if (!s.headers3) s.headers3 = [];
+          s.headers3[idx] = inp.value;
+          autoSave();
+        };
+      }(c));
+      th.appendChild(inp);
+      tr3.appendChild(th);
+    }
+    thead.appendChild(tr3);
   } else {
     let thHtml = "<tr><th class=\"row-num\">#</th>";
     headers.forEach(function (h) {
@@ -1506,6 +1649,48 @@ function deleteDriverCodeColumnMAC(colIndex) {
   var sheet = state.data[sheetName];
   if (!sheet || !sheet.headers || !sheet.data) return;
   if (colIndex < 5) return; // A/B/C (0,1,2) + 預設 Driver2/Driver3 (3,4) 不可刪
+  if (!confirm("Are you sure you want to delete this column? All data in this column will be deleted.")) return;
+  sheet.headers.splice(colIndex, 1);
+  if (sheet.headers2) sheet.headers2.splice(colIndex, 1);
+  if (sheet.headers3) sheet.headers3.splice(colIndex, 1);
+  for (var i = 0; i < sheet.data.length; i++) {
+    sheet.data[i].splice(colIndex, 1);
+  }
+  renderTable();
+  autoSave();
+}
+
+function addDriverCodeColumnSAC() {
+  var sheetName = "Resource Driver(S. A. C.)";
+  if (state.activeSheet !== sheetName || state.activeGroup !== "PeriodData") return;
+  var sheet = state.data[sheetName];
+  if (!sheet || !sheet.headers || !sheet.data) return;
+  var maxN = 0;
+  for (var i = 3; i < sheet.headers.length; i++) {
+    var m = String(sheet.headers[i] || "").match(/^Driver (\d+)$/);
+    if (m) { var x = parseInt(m[1], 10); if (x > maxN) maxN = x; }
+  }
+  var N = maxN + 1;
+  if (N < 7) N = 7;
+  sheet.headers.push("Driver " + N);
+  if (!sheet.headers2) sheet.headers2 = [];
+  sheet.headers2.push("");
+  if (!sheet.headers3) sheet.headers3 = [];
+  sheet.headers3.push("");
+  for (var i = 0; i < sheet.data.length; i++) {
+    sheet.data[i].push("");
+  }
+  ensureSACHeaderRows();
+  renderTable();
+  autoSave();
+}
+
+function deleteDriverCodeColumnSAC(colIndex) {
+  var sheetName = "Resource Driver(S. A. C.)";
+  if (state.activeSheet !== sheetName || state.activeGroup !== "PeriodData") return;
+  var sheet = state.data[sheetName];
+  if (!sheet || !sheet.headers || !sheet.data) return;
+  if (colIndex < 8) return; // A/B/C (0,1,2) + 預設 Driver2~6 (3..7) 不可刪
   if (!confirm("Are you sure you want to delete this column? All data in this column will be deleted.")) return;
   sheet.headers.splice(colIndex, 1);
   if (sheet.headers2) sheet.headers2.splice(colIndex, 1);
