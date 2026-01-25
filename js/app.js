@@ -894,6 +894,15 @@ function downloadWorkbook(workbookKey, timestamp) {
     } else {
       XLSX.utils.book_append_sheet(wb, tmWs, "TableMapping");
     }
+
+    // PeriodData：指定分頁在輸出的 Excel 中預設為 Hidden（只影響 Period Download；不存在的 sheet 略過）
+    var PERIOD_HIDDEN_SHEETS = new Set(["工作表2", "Sheet2", "Item", "TableMapping"]);
+    wb.Workbook = wb.Workbook || {};
+    wb.Workbook.Sheets = wb.SheetNames.map(function (name) {
+      var o = {};
+      if (PERIOD_HIDDEN_SHEETS.has(name)) o.Hidden = 1;
+      return o;
+    });
   }
 
   // ModelData：指定分頁在輸出的 Excel 中預設為 Hidden（Hidden: 1 = hidden，非 veryHidden）
