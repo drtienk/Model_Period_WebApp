@@ -343,7 +343,7 @@ const TEMPLATE_DATA = {
     "Exchange Rate": {
       workbook: "PeriodData",
       headers: ["Business Unit Currency", "Company Currency", "Exchange Rate"],
-      data: [["", "", ""], ["", "", ""], ["", "", ""]],
+      data: [["", "", ""]],
       required: ["Business Unit Currency", "Company Currency", "Exchange Rate"]
     },
     "Resource": {
