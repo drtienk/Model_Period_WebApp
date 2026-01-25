@@ -1192,6 +1192,21 @@ function renderTable() {
           });
           wrap.appendChild(btn);
           th.appendChild(wrap);
+        } else if (colIndex >= 4) {
+          const wrap = document.createElement("span");
+          wrap.className = "th-dc2-wrap";
+          wrap.appendChild(inp);
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn-delete-column";
+          btn.textContent = "\u00D7";
+          btn.title = "Delete Driver Code column";
+          btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            deleteDriverCodeColumn(colIndex);
+          });
+          wrap.appendChild(btn);
+          th.appendChild(wrap);
         } else {
           th.appendChild(inp);
         }
@@ -1277,10 +1292,34 @@ function addDriverCodeColumn() {
   if (state.activeSheet !== sheetName || state.activeGroup !== "PeriodData") return;
   var sheet = state.data[sheetName];
   if (!sheet || !sheet.headers || !sheet.data) return;
-  var N = sheet.headers.length - 1;
+  var maxN = 0;
+  for (var i = 2; i < sheet.headers.length; i++) {
+    var m = String(sheet.headers[i] || "").match(/^Driver Code (\d+)$/);
+    if (m) { var x = parseInt(m[1], 10); if (x > maxN) maxN = x; }
+  }
+  var N = maxN + 1;
+  if (N < 3) N = 3;
   sheet.headers.push("Driver Code " + N);
   for (var i = 0; i < sheet.data.length; i++) {
     sheet.data[i].push("");
+  }
+  renderTable();
+  autoSave();
+}
+
+function deleteDriverCodeColumn(colIndex) {
+  var sheetName = "Resource Driver(Actvity Center)";
+  if (state.activeSheet !== sheetName || state.activeGroup !== "PeriodData") return;
+  var sheet = state.data[sheetName];
+  if (!sheet || !sheet.headers || !sheet.data) return;
+  if (colIndex < 4) return;
+  if (!confirm("確定要刪除此欄位？欄位內的資料將一併刪除。")) return;
+  sheet.headers.splice(colIndex, 1);
+  for (var i = 0; i < sheet.data.length; i++) {
+    sheet.data[i].splice(colIndex, 1);
+  }
+  for (var i = 4; i < sheet.headers.length; i++) {
+    sheet.headers[i] = "Driver Code " + (i - 1);
   }
   renderTable();
   autoSave();
