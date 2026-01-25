@@ -32,11 +32,9 @@
 | **css/style.css** | 全站樣式：按鈕、表格、input、必填星號、選取/編輯/cut 的樣式、modal、分頁、狀態列等。 | ✅ 是 | 改按鈕長相、表格邊框、顏色、版面、modal 樣式等 UI 時。 |
 | **js/template-data.js** | 單一真相來源：`TEMPLATE_DATA`（workbooks、sheets 的 headers / data / required / hidden / 匯出規則等），以及 `getSheetsForWorkbook`、`getSheetConfig`、`isRequired`、`getExcelSheetName`、`getInternalSheetName`。 | ✅ 是 | 要新增/刪除工作表、改欄位名稱、改預設資料、改必填欄位、改 Excel 匯出時的工作表名稱或隱藏/系統表規則時。 |
 | **js/app.js** | 應用主邏輯：`state`、初始化、學號 modal、localStorage 讀寫、`renderAll` / `renderTable` / `renderGroupedNav`、選取（單格、框選、Ctrl+點多選、Shift+範圍）、編輯模式、剪貼（Copy/Cut/Paste）、Undo/Redo、儲存格更新與驗證、上傳 xlsx、下載 xlsx、Reset、Add/Delete 列、鍵盤與滑鼠事件綁定。 | ✅ 是 | 改表格行為、選取邏輯、剪貼、Undo/Redo、上傳/下載流程、驗證邏輯、自動儲存、或任何「做什麼」的流程時。 |
-| **js/selection_events.js** | 預期提供：依 `window.DEFS.SELECTION_CORE.api` 的選取與 Excel 式視覺、Copy/Cut/Paste、點欄/列頭選整欄整列等。使用 `#gridHead`、`#gridBody`、`td[data-r][data-c]`。 | ❌ **未載入** | **目前 index.html 未引用此檔**；且專案中沒有 `DEFS.SELECTION_CORE`，DOM 也與 app.js（`#tableHead`/`#tableBody`、`input`）不同。若未來要整合或取代 app.js 的選取邏輯，才需動到。 |
-| **js/table_core.js** | 預期提供：`DEFS.TABLE_CORE.init`、`ensureSize`、`enterEditMode`/`exitEditMode`、`#gridBody` 上的 click/input/paste/keydown。 | ❌ **未載入** | **目前 index.html 未引用此檔**；使用 `#gridBody`、`ctx.activeSheet` 等，與 app.js 的 `#tableBody`、`state` 架構不同。若要整合另一套表格/編輯邏輯，才需動到。 |
-| **js/table_render_core.js** | 預期提供：`DEFS.TABLE_RENDER.render`、`renderHeaderDefault`、`renderHeaderSAC`，輸出到 `#gridHead`、`#gridBody`，格子為 `contentEditable` 的 `td`。 | ❌ **未載入** | **目前 index.html 未引用此檔**；使用 `#gridHead`/`#gridBody`、`window.activeSheet`/`activeMode`/`activeKey`，與 app.js 的 `#tableHead`/`#tableBody`、`state` 不同。若要改用這套 render，才需動到。 |
+| **_archive/legacy_grid_system/**（含 selection_events.js、table_core.js、table_render_core.js） | 舊架構（contentEditable + #gridHead/#gridBody + DEFS.SELECTION_CORE），已歸檔。**移動日期**：2026-01-25。**新路徑**：`_archive/legacy_grid_system/`。**說明**：此三支檔案為舊架構，非現行系統使用，僅保留作參考。 | ❌ 否 | 僅在需要查閱舊實作時；現行開發勿改。 |
 
-**補充**：真正在跑的只有 **index.html、css/style.css、js/template-data.js、js/app.js**，以及 CDN 的 xlsx。`selection_events.js`、`table_core.js`、`table_render_core.js` 未在 index.html 載入，屬於另一套（contentEditable + gridHead/gridBody）的架構，目前用途需釐清（見文末待釐清清單）。
+**補充**：真正在跑的只有 **index.html、css/style.css、js/template-data.js、js/app.js**，以及 CDN 的 xlsx。原 `selection_events.js`、`table_core.js`、`table_render_core.js` 已於 2026-01-25 移至 `_archive/legacy_grid_system/`，屬舊架構，非現行系統使用。
 
 ---
 
@@ -125,9 +123,6 @@
 
 ## 待釐清問題清單
 
-1. **`js/selection_events.js`、`js/table_core.js`、`js/table_render_core.js` 未在 `index.html` 中載入**，且：  
-   - `selection_events.js` 依賴 `window.DEFS.SELECTION_CORE.api`，專案中沒有 `SELECTION_CORE`；  
-   - 三者使用 `#gridHead`、`#gridBody`、`td[data-r][data-c]`、`contentEditable`，與目前 app.js 的 `#tableHead`、`#tableBody`、`<input>` 架構不同。  
-   **請問：這三個檔案的用途是？要整合進現有 app、廢棄刪除、或保留作備用／其他專案用？**
+1. ~~**`js/selection_events.js`、`js/table_core.js`、`js/table_render_core.js` 未在 `index.html` 中載入**……~~ **【已處理】** 2026-01-25 已將三支檔案移至 `_archive/legacy_grid_system/`。說明：此三支檔案為舊架構，非現行系統使用，僅保留作參考。
 
-2. 若 `selection_events.js` / `table_core.js` / `table_render_core.js` 未來確定不採用，是否要從專案中移除或移到 `_archive` 等目錄，以避免之後誤以為是現行架構的一環？
+2. ~~若 `selection_events.js` / `table_core.js` / `table_render_core.js` 未來確定不採用，是否要從專案中移除或移到 `_archive` 等目錄……~~ **【已處理】** 已移入 `_archive/legacy_grid_system/`（移動日期：2026-01-25；新路徑：`_archive/legacy_grid_system/`）。
