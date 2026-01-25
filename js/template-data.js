@@ -378,13 +378,15 @@ const TEMPLATE_DATA = {
       data: Array(10).fill(0).map(function () { return Array(5).fill(""); }),
       required: ["Activity Center Code", "Machine Code"]
     },
+    // SAC header rename start: A=Activity Center Code, B=(Activity Center ), C=Machine Code
     "Resource Driver(S. A. C.)": {
       workbook: "PeriodData",
       headerRows: ["headers", "headers2", "headers3"],
-      headers: ["Activity Center Code", "Machine Code", "Driver 1", "Driver 2", "Driver 3", "Driver 4", "Driver 5", "Driver 6"],
+      headers: ["Activity Center Code", "(Activity Center )", "Machine Code", "Driver 2", "Driver 3", "Driver 4", "Driver 5", "Driver 6"],
       data: Array(8).fill(0).map(function () { return Array(8).fill(""); }),
       required: ["Activity Center Code"]
     },
+    // SAC header rename end
     "Activity Center Driver(N. Cap.)": {
       workbook: "PeriodData",
       headers: ["Activity Center Code", "Machine Code", "Activity Code", "Normal Capacity Hours"],

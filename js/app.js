@@ -403,6 +403,7 @@ function loadStudentData(studentId) {
       state.activeSheet = order.includes(parsed.activeSheet) ? parsed.activeSheet : (order[0] || "Company");
       ensureAllSheets();
       migrateMACHeaderNames();
+      migrateSACHeaderNames();
       showStatus("Welcome back, " + studentId);
     } catch (e) {
       console.error("Load error:", e);
@@ -506,6 +507,18 @@ function migrateMACHeaderNames() {
     autoSave();
   }
 }
+
+// SAC header rename start: migrate old B=Machine Code, C=Driver 1 → B=(Activity Center ), C=Machine Code
+function migrateSACHeaderNames() {
+  var s = state.data["Resource Driver(S. A. C.)"];
+  if (!s || !s.headers || s.headers.length < 3) return;
+  if (s.headers[1] === "Machine Code" && s.headers[2] === "Driver 1") {
+    s.headers[1] = "(Activity Center )";
+    s.headers[2] = "Machine Code";
+    autoSave();
+  }
+}
+// SAC header rename end
 
 function ensureAllSheets() {
   for (const [sheetName, config] of Object.entries(TEMPLATE_DATA.sheets)) {
@@ -1105,6 +1118,7 @@ function uploadBackup(file) {
 
       ensureAllSheets();
       migrateMACHeaderNames();
+      migrateSACHeaderNames();
       saveToStorage();
       renderAll();
       showStatus("Restored " + workbookKey + " backup");
