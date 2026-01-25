@@ -397,68 +397,68 @@ const TEMPLATE_DATA = {
     "Activity Driver": {
       workbook: "PeriodData",
       headers: ["Activity Center Code", "Machine Code", "Activity Code", "Activity Driver", "Activity Driver Value", "Value Object Code", "Value Object Type", "Product Code"],
-      data: [["", "", "", "", "", "", "", ""]],
+      data: Array(100).fill(0).map(function () { return Array(8).fill(""); }),
       required: ["Activity Center Code", "Activity Code", "Activity Driver", "Activity Driver Value"]
     },
     "ProductProject Driver": {
       workbook: "PeriodData",
       headers: ["Product Code", "Project Driver", "Project Driver Value"],
-      data: [["", "", ""]],
+      data: Array(3).fill(0).map(function () { return Array(3).fill(""); }),
       required: ["Product Code", "Project Driver", "Project Driver Value"]
     },
     "Manufacture Order": {
       workbook: "PeriodData",
       headers: ["Business Unit", "MO", "Product Code", "Quantity", "Closed"],
-      data: [["", "", "", "", ""]],
+      data: Array(3).fill(0).map(function () { return Array(5).fill(""); }),
       required: ["Business Unit", "MO", "Product Code", "Quantity"]
     },
     "Manufacture Material": {
       workbook: "PeriodData",
       headers: ["Business Unit", "MO", "Material Code", "Quantity", "Amount", "Note"],
-      data: [["", "", "", "", "", ""]],
+      data: Array(3).fill(0).map(function () { return Array(6).fill(""); }),
       required: ["Business Unit", "MO", "Material Code", "Quantity"]
     },
     "Purchased Material and WIP": {
       workbook: "PeriodData",
       headers: ["Business Unit", "Material Code", "Quantity", "Amount", "End Inventory Qty", "Unit", "End Inventory Amount"],
-      data: [["", "", "", "", "", "", ""]],
+      data: Array(3).fill(0).map(function () { return Array(7).fill(""); }),
       required: ["Business Unit", "Material Code"]
     },
     "Expected Project Value": {
       workbook: "PeriodData",
       headers: ["Project Code", "Total Project Driver Value"],
-      data: [["", ""]],
+      data: Array(3).fill(0).map(function () { return Array(2).fill(""); }),
       required: ["Project Code", "Total Project Driver Value"]
     },
     "Sales Revenue ": {
       workbook: "PeriodData",
       headers: ["Order No", "Customer Code", "Product Code", "Quantity", "Amount", "Sales Activity Center Code", "Shipment Business Unit", "Currency"],
-      data: [["", "", "", "", "", "", "", ""]],
+      data: Array(100).fill(0).map(function () { return Array(8).fill(""); }),
       required: ["Order No", "Customer Code", "Product Code", "Quantity", "Amount"]
     },
     "Revenue(InternalTransaction)NA": {
       workbook: "PeriodData",
       headers: ["Business Unit", "Resource Code", "Activity Center Code", "Amount", "Supported Activity Center Code", "Product Code", "Quantity"],
-      data: [["", "", "", "", "", "", ""]],
+      data: Array(3).fill(0).map(function () { return Array(7).fill(""); }),
       required: ["Business Unit", "Resource Code", "Amount"]
     },
     "Service Driver_Period": {
       workbook: "PeriodData",
       sheetNameInExcel: "Service Driver",
       headers: ["Business Unit", "Customer Code", "Product Code"],
-      data: [["", "", ""]],
+      data: Array(100).fill(0).map(function () { return Array(3).fill(""); }),
       required: ["Business Unit"]
     },
     "Std. Workhour": {
       workbook: "PeriodData",
       headers: ["Business Unit", "Product", "Activity Code", "Std. Work Hour", "Std. Machine Hour"],
-      data: [["", "", "", "", ""]],
+      data: Array(3).fill(0).map(function () { return Array(5).fill(""); }),
       required: ["Business Unit", "Product", "Activity Code"]
     },
     "Std. Material(BOM)": {
       workbook: "PeriodData",
       headers: ["Business Unit", "Product", "Material", "Std. Material Quantity"],
-      data: [["", "", "", ""]],
+      data: Array(3).fill(0).map(function () { return Array(4).fill(""); }),
       required: ["Business Unit", "Product", "Material", "Std. Material Quantity"]
     }
   },
