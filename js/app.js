@@ -431,6 +431,20 @@ var DEFAULT_ROWS_MODEL_MAP = {
   "Service Driver": 5
 };
 
+var PERIOD_DIM_SHEETS = new Set([
+  "Resource Driver(Value Object)",
+  "Resource Driver(Machine)",
+  "Activity Center Driver(N. Cap.)",
+  "ProductProject Driver",
+  "Manufacture Order",
+  "Manufacture Material",
+  "Purchased Material and WIP",
+  "Expected Project Value",
+  "Revenue(InternalTransaction)NA",
+  "Std. Workhour",
+  "Std. Material(BOM)"
+]);
+
 function initFromTemplate() {
   state.data = {};
   state.changeLog = [];
@@ -957,6 +971,9 @@ function renderGroupedNav() {
       pill.className = "nav-pill" + (internalName === state.activeSheet ? " active" : "");
       if (wbKey === "ModelData" && ["Machine(Activity Center Driver)", "Material", "ProductProject"].indexOf(internalName) !== -1) {
         pill.classList.add("nav-pill-muted");
+      }
+      if (wbKey === "PeriodData" && PERIOD_DIM_SHEETS.has(internalName)) {
+        pill.classList.add("tab-dim");
       }
       pill.textContent = getExcelSheetName(internalName);
       pill.addEventListener("click", function () {

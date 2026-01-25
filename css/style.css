@@ -298,6 +298,28 @@ body {
   border-color: #2563eb;
 }
 
+/* Period Data：指定分頁變淡（白底、淺灰字），仍可點擊；active 時恢復原樣式 */
+.nav-pill.tab-dim {
+  background-color: #fff;
+  color: #999;
+  border-color: #ddd;
+}
+.nav-pill.tab-dim:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+.nav-pill.tab-dim.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+.nav-pill.tab-dim.active:hover {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
 /* Main content */
 .main {
   flex: 1;
