@@ -1313,7 +1313,7 @@ function deleteDriverCodeColumn(colIndex) {
   var sheet = state.data[sheetName];
   if (!sheet || !sheet.headers || !sheet.data) return;
   if (colIndex < 4) return;
-  if (!confirm("確定要刪除此欄位？欄位內的資料將一併刪除。")) return;
+  if (!confirm("Are you sure you want to delete this column? All data in this column will be deleted.")) return;
   sheet.headers.splice(colIndex, 1);
   for (var i = 0; i < sheet.data.length; i++) {
     sheet.data[i].splice(colIndex, 1);
