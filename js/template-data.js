@@ -349,37 +349,37 @@ const TEMPLATE_DATA = {
     "Resource": {
       workbook: "PeriodData",
       headers: ["Business Unit", "Resource Code", "Activity Center Code", "Amount", "Value Object Type", "Value Object Code", "Machine Code", "Product Code"],
-      data: [["", "", "", "", "", "", "", ""]],
+      data: Array(20).fill(0).map(function () { return Array(8).fill(""); }),
       required: ["Business Unit", "Resource Code", "Amount"]
     },
     "Resource Driver(Actvity Center)": {
       workbook: "PeriodData",
       headers: ["Activity Center Code", "(Activity Center)", "Driver Code 1", "Driver Code 2"],
-      data: [["", "", "", ""]],
+      data: Array(10).fill(0).map(function () { return Array(4).fill(""); }),
       required: ["Activity Center Code"]
     },
     "Resource Driver(Value Object)": {
       workbook: "PeriodData",
       headers: ["Business Unit", "Value Object Type", "Value Object Code", "Driver Code 1", "Driver Code 2"],
-      data: [["", "", "", "", ""]],
+      data: Array(3).fill(0).map(function () { return Array(5).fill(""); }),
       required: ["Business Unit", "Value Object Type", "Value Object Code"]
     },
     "Resource Driver(Machine)": {
       workbook: "PeriodData",
       headers: ["Activity Center Code", "Machine Code", "Driver Code 1", "Driver Code 2"],
-      data: [["", "", "", ""]],
+      data: Array(3).fill(0).map(function () { return Array(4).fill(""); }),
       required: ["Activity Center Code", "Machine Code"]
     },
     "Resource Driver(M. A. C.)": {
       workbook: "PeriodData",
       headers: ["Activity Center Code", "Machine Code", "Driver 1", "Driver 2", "Driver 3"],
-      data: [["", "", "", "", ""]],
+      data: Array(10).fill(0).map(function () { return Array(5).fill(""); }),
       required: ["Activity Center Code", "Machine Code"]
     },
     "Resource Driver(S. A. C.)": {
       workbook: "PeriodData",
       headers: ["Activity Center Code", "Machine Code", "Driver 1", "Driver 2", "Driver 3", "Driver 4", "Driver 5", "Driver 6"],
-      data: [["", "", "", "", "", "", "", ""]],
+      data: Array(8).fill(0).map(function () { return Array(8).fill(""); }),
       required: ["Activity Center Code"]
     },
     "Activity Center Driver(N. Cap.)": {
