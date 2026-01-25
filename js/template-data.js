@@ -169,9 +169,17 @@ const TEMPLATE_DATA = {
     "List_Item<IT使用>": {
       workbook: "ModelData",
       hidden: true,
-      exportAsBlank: true,
-      headers: [],
-      data: []
+      exportAsBlank: false,
+      sheetNameInExcel: "List_Item<IT使用>",
+      headers: ["作業中心或價值標的類別", "價值標的類別"],
+      data: [
+        ["Activity Center", "ManufactureOrder"],
+        ["Customer", "Material"],
+        ["Material", "Product"],
+        ["Product", "Project"],
+        ["Project", "Supplier"],
+        ["Supplier", ""]
+      ]
     },
 
     // ========================================
