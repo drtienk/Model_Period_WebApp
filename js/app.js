@@ -708,14 +708,22 @@ function downloadWorkbook(workbookKey, timestamp) {
     const sheet = state.data[internalName];
     const excelSheetName = config.sheetNameInExcel || internalName;
 
-    if (config.hidden) {
+    if (config.hidden && config.exportAsBlank) {
       const ws = XLSX.utils.aoa_to_sheet([[]]);
       XLSX.utils.book_append_sheet(wb, ws, excelSheetName);
       return;
     }
 
-    if (!sheet) return;
-    const wsData = [sheet.headers].concat(sheet.data);
+    var headers, data;
+    if (config.exportUseTemplate && config.headers) {
+      headers = config.headers;
+      data = config.data || [];
+    } else {
+      if (!sheet) return;
+      headers = sheet.headers;
+      data = sheet.data;
+    }
+    const wsData = [headers].concat(data);
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     XLSX.utils.book_append_sheet(wb, ws, excelSheetName);
   });

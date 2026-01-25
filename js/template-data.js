@@ -39,24 +39,46 @@ const TEMPLATE_DATA = {
     "Remark": {
       workbook: "ModelData",
       hidden: true,
+      exportAsBlank: true,
       headers: [],
       data: []
     },
     "Item<IT使用>": {
       workbook: "ModelData",
       hidden: true,
-      headers: [],
-      data: []
+      sheetNameInExcel: "Item<IT使用>",
+      exportUseTemplate: true,
+      headers: ["No.", "中文", "英文", "工作表名稱", "Remark", "需求", "條件說明"],
+      data: [
+        ["1", "公司", "Company", "Company", "", "Required", ""],
+        ["2", "事業單位", "Business Unit", "Business Unit", "", "Required", ""],
+        ["3", "公司資源", "Company Resource", "Company Resource", "", "Required", ""],
+        ["4", "作業中心", "Activity Center", "Activity Center", "", "Required", ""],
+        ["5", "機台(作業中心動因)", "Machine(Activity Center Driver)", "Machine(Activity Center Driver)", "", "Required", "製造業 Required；其它產業 Optional"],
+        ["6", "機台(替代動因)", "Machine(Substitute Driver)", "Machine(Substitute Driver)", "待確認", "Optional", "設計非主要機台"],
+        ["7", "正常產能", "Normal Capacity", "Normal Capacity", "", "Optional", "正常產能法"],
+        ["8", "作業", "Activity", "Activity", "", "Required", ""],
+        ["9", "產品專案", "ProductProject", "ProductProject", "", "Optional", "設計產品專案為價值標的"],
+        ["10", "原料", "Material", "Material", "", "Required", ""],
+        ["11", "產品", "Product", "Product", "", "Required", ""],
+        ["12", "顧客", "Customer", "Customer", "", "Required", ""],
+        ["13", "標籤", "Label", "Label", "", "Required", ""],
+        ["14", "清單設定", "List setting", "List setting", "", "Required", ""],
+        ["15", "服務動因", "Service Driver", "Service Driver", "", "Required", ""],
+        ["16", "動因公式", "Driver and Allocation Formula", "Driver and Allocation Formula", "", "Required", ""]
+      ]
     },
     "TableMapping<IT使用>": {
       workbook: "ModelData",
       hidden: true,
+      exportAsBlank: true,
       headers: [],
       data: []
     },
     "List_Item<IT使用>": {
       workbook: "ModelData",
       hidden: true,
+      exportAsBlank: true,
       headers: [],
       data: []
     },
@@ -161,24 +183,28 @@ const TEMPLATE_DATA = {
     "工作表2": {
       workbook: "PeriodData",
       hidden: true,
+      exportAsBlank: true,
       headers: [],
       data: []
     },
     "Sheet2": {
       workbook: "PeriodData",
       hidden: true,
+      exportAsBlank: true,
       headers: [],
       data: []
     },
     "Item": {
       workbook: "PeriodData",
       hidden: true,
+      exportAsBlank: true,
       headers: [],
       data: []
     },
     "TableMapping": {
       workbook: "PeriodData",
       hidden: true,
+      exportAsBlank: true,
       headers: [],
       data: []
     },
