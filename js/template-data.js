@@ -385,13 +385,13 @@ const TEMPLATE_DATA = {
     "Activity Center Driver(N. Cap.)": {
       workbook: "PeriodData",
       headers: ["Activity Center Code", "Machine Code", "Activity Code", "Normal Capacity Hours"],
-      data: [["", "", "", ""]],
+      data: Array(3).fill(0).map(function () { return Array(4).fill(""); }),
       required: ["Activity Center Code", "Activity Code", "Normal Capacity Hours"]
     },
     "Activity Center Driver(A. Cap.)": {
       workbook: "PeriodData",
       headers: ["Activity Center Code", "Machine Code", "Supported Activity Center Code", "Activity Code", "Actual Capacity Hours", "Value Object Code", "Value Object Type", "Product Code"],
-      data: [["", "", "", "", "", "", "", ""]],
+      data: Array(5).fill(0).map(function () { return Array(8).fill(""); }),
       required: ["Activity Center Code", "Activity Code", "Actual Capacity Hours"]
     },
     "Activity Driver": {
