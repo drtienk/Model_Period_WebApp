@@ -765,6 +765,29 @@ function downloadWorkbook(workbookKey, timestamp) {
     XLSX.utils.book_append_sheet(wb, logWs, "ChangeLog");
   }
 
+  // ModelData：指定分頁在輸出的 Excel 中預設為 Hidden（Hidden: 1 = hidden，非 veryHidden）
+  if (workbookKey === "ModelData") {
+    var HIDE_SHEETS_MODEL = new Set([
+      "Remark",
+      "Item<IT使用>",
+      "TableMapping<IT使用>",
+      "List_Item<IT使用>",
+      "List setting",
+      "Label"
+    ]);
+    wb.Workbook = wb.Workbook || {};
+    wb.Workbook.Sheets = wb.SheetNames.map(function (name) {
+      var o = {};
+      if (HIDE_SHEETS_MODEL.has(name)) o.Hidden = 1;
+      return o;
+    });
+    // 至少保留一張可見（避免 Excel 開啟時全部隱藏）
+    var allHidden = wb.Workbook.Sheets.every(function (m) { return m.Hidden === 1; });
+    if (allHidden && wb.Workbook.Sheets.length > 0) {
+      wb.Workbook.Sheets[0].Hidden = 0;
+    }
+  }
+
   const filename = workbookConfig.filename + "_" + state.studentId + "_" + timestamp + ".xlsx";
   XLSX.writeFile(wb, filename);
 }
