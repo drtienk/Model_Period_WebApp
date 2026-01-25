@@ -391,6 +391,31 @@ body {
   content: none;
 }
 
+/* 表頭可編輯欄位（Resource Driver(Actvity Center) 的 C 欄起）*/
+.data-table th .th-input {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: inherit;
+  font-weight: 600;
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+  cursor: text;
+}
+.data-table th .th-input:hover {
+  border-color: var(--color-border);
+  background: #fff;
+}
+.data-table th .th-input:focus {
+  outline: none;
+  border-color: var(--color-model);
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2);
+}
+
 .data-table td {
   padding: 2px;
 }

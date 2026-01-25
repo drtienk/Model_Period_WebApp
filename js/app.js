@@ -963,16 +963,25 @@ function uploadBackup(file) {
           if (config.hidden) return;
 
           const templateHeaders = config.headers;
+          var finalHeaders = templateHeaders;
+          if (internalName === "Resource Driver(Actvity Center)") {
+            var uploadHeaders = Array.isArray(jsonData[0]) ? jsonData[0] : [];
+            finalHeaders = templateHeaders.map(function (_, i) {
+              if (i <= 1) return templateHeaders[i];
+              return (typeof uploadHeaders[i] === "string" ? String(uploadHeaders[i]).trim() : "") || "";
+            });
+          }
+          var colCount = finalHeaders.length;
           const uploadedData = jsonData.slice(1);
           const normalizedData = uploadedData.map(function (row) {
             const newRow = [].concat(row);
-            while (newRow.length < templateHeaders.length) newRow.push("");
-            return newRow.slice(0, templateHeaders.length);
+            while (newRow.length < colCount) newRow.push("");
+            return newRow.slice(0, colCount);
           });
 
           state.data[internalName] = {
-            headers: templateHeaders,
-            data: normalizedData.length > 0 ? normalizedData : [Array(templateHeaders.length).fill("")]
+            headers: finalHeaders,
+            data: normalizedData.length > 0 ? normalizedData : [Array(colCount).fill("")]
           };
         }
       });
@@ -1150,14 +1159,42 @@ function renderTable() {
 
   const headers = sheet.headers;
   console.log("[headers]", state.activeSheet, sheet.headers);
-  let thHtml = "<tr><th class=\"row-num\">#</th>";
-  headers.forEach(function (h) {
-    const req = isRequired(state.activeSheet, h);
-    const showStar = (state.activeGroup === "ModelData" && (state.activeSheet === "Company" || state.activeSheet === "Company Resource") && req);
-    thHtml += "<th" + (req ? " class=\"required\"" : "") + ">" + escapeHtml(h) + (showStar ? "<span class=\"req-star\">*</span>" : "") + "</th>";
-  });
-  thHtml += "<th class=\"row-actions\"></th></tr>";
-  thead.innerHTML = thHtml;
+  const isRDAC = (state.activeSheet === "Resource Driver(Actvity Center)");
+  if (isRDAC) {
+    thead.innerHTML = "";
+    const tr = document.createElement("tr");
+    tr.appendChild(createCell("th", "row-num", "#"));
+    headers.forEach(function (h, colIndex) {
+      const req = isRequired(state.activeSheet, h);
+      const th = document.createElement("th");
+      if (req) th.classList.add("required");
+      if (colIndex >= 2) {
+        const inp = document.createElement("input");
+        inp.className = "th-input";
+        inp.type = "text";
+        inp.value = (h != null) ? String(h) : "";
+        inp.addEventListener("input", function () {
+          var s = state.data[state.activeSheet];
+          if (s && s.headers) { s.headers[colIndex] = inp.value; autoSave(); }
+        });
+        th.appendChild(inp);
+      } else {
+        th.textContent = (h != null) ? String(h) : "";
+      }
+      tr.appendChild(th);
+    });
+    tr.appendChild(createCell("th", "row-actions", ""));
+    thead.appendChild(tr);
+  } else {
+    let thHtml = "<tr><th class=\"row-num\">#</th>";
+    headers.forEach(function (h) {
+      const req = isRequired(state.activeSheet, h);
+      const showStar = (state.activeGroup === "ModelData" && (state.activeSheet === "Company" || state.activeSheet === "Company Resource") && req);
+      thHtml += "<th" + (req ? " class=\"required\"" : "") + ">" + escapeHtml(h) + (showStar ? "<span class=\"req-star\">*</span>" : "") + "</th>";
+    });
+    thHtml += "<th class=\"row-actions\"></th></tr>";
+    thead.innerHTML = thHtml;
+  }
 
   tbody.innerHTML = "";
   sheet.data.forEach(function (row, rowIndex) {
