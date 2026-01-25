@@ -415,6 +415,22 @@ function loadStudentData(studentId) {
   renderAll();
 }
 
+function makeBlankRows(colCount, rowCount) {
+  return Array(rowCount).fill(0).map(function () { return Array(colCount).fill(""); });
+}
+
+var DEFAULT_ROWS_MODEL_MAP = {
+  "Company": 1,
+  "Business Unit": 1,
+  "Company Resource": 20,
+  "Activity Center": 10,
+  " Normal Capacity": 5,
+  "Activity": 5,
+  "Driver and Allocation Formula": 10,
+  "Customer": 100,
+  "Service Driver": 5
+};
+
 function initFromTemplate() {
   state.data = {};
   state.changeLog = [];
@@ -426,14 +442,14 @@ function initFromTemplate() {
       state.data[sheetName] = { headers: [], data: [] };
       continue;
     }
-    state.data[sheetName] = {
-      headers: [...config.headers],
-      data: sheetName === "Company Resource"
-        ? Array(20).fill(0).map(function () { return Array(config.headers.length).fill(""); })
-        : sheetName === "Activity Center"
-          ? Array(10).fill(0).map(function () { return Array(config.headers.length).fill(""); })
-          : config.data.map(row => [...row])
-    };
+    var headers = [...config.headers];
+    var data;
+    if (config.workbook === "ModelData" && DEFAULT_ROWS_MODEL_MAP[sheetName] != null) {
+      data = makeBlankRows(headers.length, DEFAULT_ROWS_MODEL_MAP[sheetName]);
+    } else {
+      data = config.data.map(function (row) { return [...row]; });
+    }
+    state.data[sheetName] = { headers: headers, data: data };
   }
   state.activeGroup = "ModelData";
   state.activeSheet = "Company";
@@ -445,10 +461,14 @@ function ensureAllSheets() {
     if (!config.headers || config.headers.length === 0) {
       state.data[sheetName] = { headers: [], data: [] };
     } else {
-      state.data[sheetName] = {
-        headers: [...config.headers],
-        data: config.data.map(function (row) { return [...row]; })
-      };
+      var headers = [...config.headers];
+      var data;
+      if (config.workbook === "ModelData" && DEFAULT_ROWS_MODEL_MAP[sheetName] != null) {
+        data = makeBlankRows(headers.length, DEFAULT_ROWS_MODEL_MAP[sheetName]);
+      } else {
+        data = config.data.map(function (row) { return [...row]; });
+      }
+      state.data[sheetName] = { headers: headers, data: data };
     }
   }
 }
