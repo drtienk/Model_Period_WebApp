@@ -779,6 +779,36 @@ function downloadWorkbook(workbookKey, timestamp) {
     XLSX.utils.book_append_sheet(wb, logWs, "ChangeLog");
   }
 
+  // PeriodData：覆蓋 "Item" 工作表為固定內容（headers + 17 列），確保下載時永遠是正確表格
+  if (workbookKey === "PeriodData") {
+    var ITEM_HEADERS = ["No.", "中文", "英文", "工作表名稱", "需求", "條件說明"];
+    var ITEM_DATA = [
+      ["1", "匯率", "Exchange Rate", "Exchange Rate", "Required", ""],
+      ["2", "資源", "Resource", "Resource", "Required", ""],
+      ["3", "資源動因(作業中心)", "Resource Driver(Activity Center)", "Resource Driver(Activity Center)", "Required", ""],
+      ["4", "資源動因(標的)", "Resource Driver(Value Object)", "Resource Driver(Value Object)", "Required", ""],
+      ["5", "資源動因(機台)", "Resource Driver(Machine)", "Resource Driver(Machine)", "Required", "製造業 Required；其它產業 Optional"],
+      ["6", "資源動因(管理作業中心)", "Resource Driver(Management Activity Center)", "Resource Driver(M. A. C.)", "Required", ""],
+      ["7", "資源動因(支援作業中心)", "Resource Driver(Supporting Activity Center)", "Resource Driver(S. A. C.)", "Required", ""],
+      ["8", "作業中心動因(正常產能)", "Activity Center Driver(Normal Capacity)", "Activity Center Driver(N. Cap.)", "Optional", "正常產能法"],
+      ["9", "作業中心動因(實際產能)", "Activity Center Driver(Actual Capacity)", "Activity Center Driver(A. Cap.)", "Required", ""],
+      ["10", "作業動因", "Activity Driver", "Activity Driver", "Required", ""],
+      ["11", "產品專案動因", "ProductProject Driver", "ProductProject Driver", "Optional", "設計產品專案為價值標的"],
+      ["12", "製令單", "Manufacture Order", "Manufacture Order", "Required", "製造業 Required；其它產業 Optional"],
+      ["13", "製令用料", "Manufacture Material", "Manufacture Material", "Required", "製造業 Required；其它產業 Optional"],
+      ["14", "原料與半成品採購", "Purchased Material and Work-in-process Product", "Purchased Material and WIP", "Required", ""],
+      ["15", "預期專案價值", "Expected Project Value", "Expected Project Value", "Optional", "設計專案為價值標的，且分攤至產品成本"],
+      ["16", "銷貨收入", "Sales Revenue", "Sales Revenue", "Required", ""],
+      ["17", "服務動因", "Service Driver", "Service Driver", "Required", ""]
+    ];
+    var itemWs = XLSX.utils.aoa_to_sheet([ITEM_HEADERS].concat(ITEM_DATA));
+    if (wb.SheetNames.indexOf("Item") !== -1) {
+      wb.Sheets["Item"] = itemWs;
+    } else {
+      XLSX.utils.book_append_sheet(wb, itemWs, "Item");
+    }
+  }
+
   // ModelData：指定分頁在輸出的 Excel 中預設為 Hidden（Hidden: 1 = hidden，非 veryHidden）
   if (workbookKey === "ModelData") {
     var HIDE_SHEETS_MODEL = new Set([
