@@ -669,6 +669,8 @@ function validateCell(sheetName, rowIndex, colIndex) {
 
 // --- Download (TWO files) ---
 
+var SYSTEM_EXPORT_SHEETS = new Set(["Item<IT使用>", "TableMapping<IT使用>"]);
+
 function downloadExcel() {
   if (!state.studentId) {
     showStatus("Enter Student ID first", "error");
@@ -715,7 +717,10 @@ function downloadWorkbook(workbookKey, timestamp) {
     }
 
     var headers, data;
-    if (config.exportUseTemplate && config.headers) {
+    if (SYSTEM_EXPORT_SHEETS.has(excelSheetName)) {
+      headers = config.headers;
+      data = config.data || [];
+    } else if (config.exportUseTemplate && config.headers) {
       headers = config.headers;
       data = config.data || [];
     } else {
