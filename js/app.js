@@ -1177,7 +1177,24 @@ function renderTable() {
           var s = state.data[state.activeSheet];
           if (s && s.headers) { s.headers[colIndex] = inp.value; autoSave(); }
         });
-        th.appendChild(inp);
+        if (colIndex === 3) {
+          const wrap = document.createElement("span");
+          wrap.className = "th-dc2-wrap";
+          wrap.appendChild(inp);
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn-add-column";
+          btn.textContent = "+";
+          btn.title = "Add Driver Code";
+          btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            addDriverCodeColumn();
+          });
+          wrap.appendChild(btn);
+          th.appendChild(wrap);
+        } else {
+          th.appendChild(inp);
+        }
       } else {
         th.textContent = (h != null) ? String(h) : "";
       }
@@ -1254,6 +1271,20 @@ function escapeHtml(s) {
 }
 
 // --- Add / Delete row ---
+
+function addDriverCodeColumn() {
+  var sheetName = "Resource Driver(Actvity Center)";
+  if (state.activeSheet !== sheetName || state.activeGroup !== "PeriodData") return;
+  var sheet = state.data[sheetName];
+  if (!sheet || !sheet.headers || !sheet.data) return;
+  var N = sheet.headers.length - 1;
+  sheet.headers.push("Driver Code " + N);
+  for (var i = 0; i < sheet.data.length; i++) {
+    sheet.data[i].push("");
+  }
+  renderTable();
+  autoSave();
+}
 
 function addRow() {
   const sheet = state.data[state.activeSheet];
