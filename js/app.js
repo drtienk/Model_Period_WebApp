@@ -725,7 +725,7 @@ function downloadWorkbook(workbookKey, timestamp) {
       data = config.data || [];
     } else {
       if (!sheet) {
-        if (internalName === "List setting" && config.headers && config.headers.length > 0) {
+        if ((internalName === "List setting" || internalName === "Label") && config.headers && config.headers.length > 0) {
           headers = config.headers;
           data = (config.data && config.data.length > 0) ? config.data : [Array(config.headers.length).fill("")];
         } else {
@@ -737,6 +737,10 @@ function downloadWorkbook(workbookKey, timestamp) {
         if (internalName === "List setting") {
           if (!headers || !Array.isArray(headers) || headers.length === 0) headers = config.headers || [];
           if (!data || !Array.isArray(data) || data.length === 0) data = [Array((headers || config.headers || []).length).fill("")];
+        }
+        if (internalName === "Label") {
+          if (!headers || !Array.isArray(headers) || headers.length === 0 || (config.headers && headers.length !== config.headers.length)) headers = config.headers || [];
+          if (!data || !Array.isArray(data) || data.length === 0) data = [Array((config.headers || headers || []).length).fill("")];
         }
       }
     }
