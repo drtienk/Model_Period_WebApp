@@ -379,15 +379,15 @@ const TEMPLATE_DATA = {
       required: ["Activity Center Code", "Machine Code"]
     },
     // MAC default headers end
-    // SAC header rename start: A=Activity Center Code, B=(Activity Center ), C=Machine Code
+    // SAC default headers start: 預設 4 欄
     "Resource Driver(S. A. C.)": {
       workbook: "PeriodData",
       headerRows: ["headers", "headers2", "headers3"],
-      headers: ["Activity Center Code", "(Activity Center )", "Machine Code", "Driver 2", "Driver 3", "Driver 4", "Driver 5", "Driver 6"],
-      data: Array(8).fill(0).map(function () { return Array(8).fill(""); }),
+      headers: ["Activity Center Code", "(Activity Center )", "Machine Code", "Driver 1"],
+      data: Array(8).fill(0).map(function () { return Array(4).fill(""); }),
       required: ["Activity Center Code"]
     },
-    // SAC header rename end
+    // SAC default headers end
     "Activity Center Driver(N. Cap.)": {
       workbook: "PeriodData",
       headers: ["Activity Center Code", "Machine Code", "Activity Code", "Normal Capacity Hours"],
