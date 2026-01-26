@@ -403,13 +403,15 @@ const TEMPLATE_DATA = {
     },
     // ACAP insert description column end
     // ADriver insert description column start: 第二欄 (Activity Center description)
+    // ADriver insert activity description column start: 第 5 欄 (Activity  Description)
     "Activity Driver": {
       workbook: "PeriodData",
-      headers: ["Activity Center Code", "(Activity Center description)", "Machine Code", "Activity Code", "Activity Driver", "Activity Driver Value", "Value Object Code", "Value Object Type", "Product Code"],
-      data: Array(100).fill(0).map(function () { return Array(9).fill(""); }),
+      headers: ["Activity Center Code", "(Activity Center description)", "Machine Code", "Activity Code", "(Activity  Description)", "Activity Driver", "Activity Driver Value", "Value Object Code", "Value Object Type", "Product Code"],
+      data: Array(100).fill(0).map(function () { return Array(10).fill(""); }),
       required: ["Activity Center Code", "Activity Code", "Activity Driver", "Activity Driver Value"]
     },
     // ADriver insert description column end
+    // ADriver insert activity description column end
     "ProductProject Driver": {
       workbook: "PeriodData",
       headers: ["Product Code", "Project Driver", "Project Driver Value"],
