@@ -394,12 +394,14 @@ const TEMPLATE_DATA = {
       data: Array(3).fill(0).map(function () { return Array(4).fill(""); }),
       required: ["Activity Center Code", "Activity Code", "Normal Capacity Hours"]
     },
+    // ACAP insert description column start: 第二欄 (Activity Center description)
     "Activity Center Driver(A. Cap.)": {
       workbook: "PeriodData",
-      headers: ["Activity Center Code", "Machine Code", "Supported Activity Center Code", "Activity Code", "Actual Capacity Hours", "Value Object Code", "Value Object Type", "Product Code"],
-      data: Array(5).fill(0).map(function () { return Array(8).fill(""); }),
+      headers: ["Activity Center Code", "(Activity Center description)", "Machine Code", "Supported Activity Center Code", "Activity Code", "Actual Capacity Hours", "Value Object Code", "Value Object Type", "Product Code"],
+      data: Array(5).fill(0).map(function () { return Array(9).fill(""); }),
       required: ["Activity Center Code", "Activity Code", "Actual Capacity Hours"]
     },
+    // ACAP insert description column end
     "Activity Driver": {
       workbook: "PeriodData",
       headers: ["Activity Center Code", "Machine Code", "Activity Code", "Activity Driver", "Activity Driver Value", "Value Object Code", "Value Object Type", "Product Code"],

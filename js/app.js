@@ -404,6 +404,7 @@ function loadStudentData(studentId) {
       ensureAllSheets();
       migrateMACHeaderNames();
       migrateSACHeaderNames();
+      migrateACAPDescriptionColumn();
       showStatus("Welcome back, " + studentId);
     } catch (e) {
       console.error("Load error:", e);
@@ -519,6 +520,19 @@ function migrateSACHeaderNames() {
   }
 }
 // SAC header rename end
+
+// ACAP insert description column start: 舊資料補第二欄 (Activity Center description)
+function migrateACAPDescriptionColumn() {
+  var s = state.data["Activity Center Driver(A. Cap.)"];
+  if (!s || !s.headers) return;
+  if (s.headers[1] === "(Activity Center description)") return;
+  s.headers.splice(1, 0, "(Activity Center description)");
+  if (s.data) { for (var i = 0; i < s.data.length; i++) { s.data[i].splice(1, 0, ""); } }
+  if (s.headers2) s.headers2.splice(1, 0, "");
+  if (s.headers3) s.headers3.splice(1, 0, "");
+  autoSave();
+}
+// ACAP insert description column end
 
 function ensureAllSheets() {
   for (const [sheetName, config] of Object.entries(TEMPLATE_DATA.sheets)) {
@@ -1119,6 +1133,7 @@ function uploadBackup(file) {
       ensureAllSheets();
       migrateMACHeaderNames();
       migrateSACHeaderNames();
+      migrateACAPDescriptionColumn();
       saveToStorage();
       renderAll();
       showStatus("Restored " + workbookKey + " backup");
