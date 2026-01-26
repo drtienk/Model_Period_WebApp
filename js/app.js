@@ -1065,11 +1065,26 @@ function uploadBackup(file) {
 
           var finalHeaders = templateHeaders;
           if (internalName === "Resource Driver(Actvity Center)") {
+            // Resource Driver(Actvity Center): 保留所有上傳的欄位，以實際欄位結構為準
             var uploadHeaders = Array.isArray(jsonData[0]) ? jsonData[0] : [];
-            finalHeaders = templateHeaders.map(function (_, i) {
-              if (i <= 1) return templateHeaders[i];
-              return (typeof uploadHeaders[i] === "string" ? String(uploadHeaders[i]).trim() : "") || "";
-            });
+            var uploadColCount = uploadHeaders.length;
+            var templateColCount = templateHeaders.length;
+            // 確保至少保留模板的必要欄位（前2欄固定）
+            var minColCount = Math.max(uploadColCount, templateColCount);
+            finalHeaders = [];
+            for (var i = 0; i < minColCount; i++) {
+              if (i < 2) {
+                // 前2欄使用模板（Activity Center Code, (Activity Center)）
+                finalHeaders.push(templateHeaders[i] || "");
+              } else if (i < uploadColCount) {
+                // 使用上傳的欄位名（保留所有新增欄位）
+                var uploadHeader = (typeof uploadHeaders[i] === "string" ? String(uploadHeaders[i]).trim() : "");
+                finalHeaders.push(uploadHeader || "");
+              } else {
+                // 如果上傳欄位比模板少，補空字串（不應該發生，但以防萬一）
+                finalHeaders.push("");
+              }
+            }
           }
           var colCount = finalHeaders.length;
           const uploadedData = jsonData.slice(1);
