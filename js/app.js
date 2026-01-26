@@ -1478,7 +1478,8 @@ function renderTable() {
         btnAdd.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); addDriverCodeColumnSAC(); });
         wrap.appendChild(btnAdd);
         th.appendChild(wrap);
-      } else if (c >= 8) {
+      } else if (canDeleteSacColumn(c)) {
+        // SAC column delete X: 新增欄位 (col>=4) 表頭顯示 X
         var wrap = document.createElement("span");
         wrap.className = "th-dc2-wrap";
         wrap.appendChild(inp);
@@ -1717,12 +1718,16 @@ function addDriverCodeColumnSAC() {
   autoSave();
 }
 
+// SAC column delete X start
+function canDeleteSacColumn(colIndex) { return colIndex >= 4; }
+// SAC column delete X end
+
 function deleteDriverCodeColumnSAC(colIndex) {
   var sheetName = "Resource Driver(S. A. C.)";
   if (state.activeSheet !== sheetName || state.activeGroup !== "PeriodData") return;
   var sheet = state.data[sheetName];
   if (!sheet || !sheet.headers || !sheet.data) return;
-  if (colIndex < 8) return; // A/B/C (0,1,2) + 預設 Driver2~6 (3..7) 不可刪
+  if (!canDeleteSacColumn(colIndex)) return; // A/B/C/D 預設四欄不可刪
   if (!confirm("Are you sure you want to delete this column? All data in this column will be deleted.")) return;
   sheet.headers.splice(colIndex, 1);
   if (sheet.headers2) sheet.headers2.splice(colIndex, 1);
