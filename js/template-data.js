@@ -402,12 +402,14 @@ const TEMPLATE_DATA = {
       required: ["Activity Center Code", "Activity Code", "Actual Capacity Hours"]
     },
     // ACAP insert description column end
+    // ADriver insert description column start: 第二欄 (Activity Center description)
     "Activity Driver": {
       workbook: "PeriodData",
-      headers: ["Activity Center Code", "Machine Code", "Activity Code", "Activity Driver", "Activity Driver Value", "Value Object Code", "Value Object Type", "Product Code"],
-      data: Array(100).fill(0).map(function () { return Array(8).fill(""); }),
+      headers: ["Activity Center Code", "(Activity Center description)", "Machine Code", "Activity Code", "Activity Driver", "Activity Driver Value", "Value Object Code", "Value Object Type", "Product Code"],
+      data: Array(100).fill(0).map(function () { return Array(9).fill(""); }),
       required: ["Activity Center Code", "Activity Code", "Activity Driver", "Activity Driver Value"]
     },
+    // ADriver insert description column end
     "ProductProject Driver": {
       workbook: "PeriodData",
       headers: ["Product Code", "Project Driver", "Project Driver Value"],
