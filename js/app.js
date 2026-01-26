@@ -904,7 +904,7 @@ var SYSTEM_EXPORT_SHEETS = new Set(["Item<IT使用>", "TableMapping<IT使用>", 
 
 function downloadExcel() {
   if (!state.studentId) {
-    showStatus("Enter Student ID first", "error");
+    showStatus("Enter your company name first", "error");
     return;
   }
   const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
@@ -1095,7 +1095,7 @@ function downloadWorkbook(workbookKey, timestamp) {
 
 function uploadBackup(file) {
   if (!state.studentId) {
-    showStatus("Enter Student ID first", "error");
+    showStatus("Enter your company name first", "error");
     return;
   }
   const reader = new FileReader();
