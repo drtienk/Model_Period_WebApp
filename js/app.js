@@ -306,44 +306,142 @@ function doPaste() {
     if (!text || String(text).trim() === "") return;
     console.log("[doPaste] start lastOp=", state.lastClipboardOp, "hasCut=", !!state.cutCells);
 
+    // 解析剪貼簿內容為 2D 陣列
     var rows = text.split(/\r?\n/);
-    var data = rows.map(function (line) { return line.split("\t"); });
-    if (data.length === 0) return;
+    var clipboardData = rows.map(function (line) { return line.split("\t"); });
+    // 移除最後的空行（如果有的話）
+    if (clipboardData.length > 0 && clipboardData[clipboardData.length - 1].length === 1 && clipboardData[clipboardData.length - 1][0] === "") {
+      clipboardData.pop();
+    }
+    if (clipboardData.length === 0) return;
+
+    var clipboardRows = clipboardData.length;
+    var clipboardCols = clipboardData.reduce(function (max, row) { return Math.max(max, row.length); }, 0);
+    var isSingleCell = (clipboardRows === 1 && clipboardCols === 1);
 
     beginAction("Paste");
     var colCount = sheet.headers.length;
-    var startRow = state.activeCell.row;
-    var startCol = state.activeCell.col;
     var addedRows = 0;
 
-    for (var i = 0; i < data.length; i++) {
-      var targetRow = startRow + i;
-      while (sheet.data.length <= targetRow) {
+    // 決定目標範圍
+    var targetRect = null;
+    var targetCells = null; // 用於 multiSelection
+
+    // 優先處理 multiSelection（Ctrl+點選的不連續多格）
+    if (state.multiSelection && state.multiSelection.length > 0) {
+      if (isSingleCell) {
+        // 剪貼簿是 1x1，填滿所有 multiSelection 的格
+        targetCells = state.multiSelection;
+        var singleValue = (clipboardData[0] && clipboardData[0][0] != null) ? String(clipboardData[0][0]) : "";
+        targetCells.forEach(function (cell) {
+          if (cell.row >= 0 && cell.col >= 0 && cell.col < colCount) {
+            while (sheet.data.length <= cell.row) {
+              sheet.data.push(Array(colCount).fill(""));
+              addedRows++;
+            }
+            updateCell(state.activeSheet, cell.row, cell.col, singleValue);
+          }
+        });
+      } else {
+        // 剪貼簿不是 1x1，以 activeCell 為起點貼上（multiSelection 不支援平鋪）
+        targetRect = {
+          startRow: state.activeCell.row,
+          startCol: state.activeCell.col,
+          endRow: state.activeCell.row + clipboardRows - 1,
+          endCol: state.activeCell.col + clipboardCols - 1
+        };
+      }
+    } else if (state.selection) {
+      // 有矩形 selection，使用 selection 作為目標範圍
+      targetRect = {
+        startRow: state.selection.startRow,
+        startCol: state.selection.startCol,
+        endRow: state.selection.endRow,
+        endCol: state.selection.endCol
+      };
+    } else {
+      // 只有 activeCell，以 activeCell 為起點，大小 = clipboard 大小
+      targetRect = {
+        startRow: state.activeCell.row,
+        startCol: state.activeCell.col,
+        endRow: state.activeCell.row + clipboardRows - 1,
+        endCol: state.activeCell.col + clipboardCols - 1
+      };
+    }
+
+    // 處理矩形範圍的貼上（非 multiSelection 或 multiSelection 但剪貼簿不是 1x1）
+    if (targetRect) {
+      var targetRows = targetRect.endRow - targetRect.startRow + 1;
+      var targetCols = targetRect.endCol - targetRect.startCol + 1;
+
+      // 確保有足夠的列
+      while (sheet.data.length <= targetRect.endRow) {
         sheet.data.push(Array(colCount).fill(""));
         addedRows++;
       }
-      var rowData = data[i] || [];
-      for (var j = 0; j < rowData.length; j++) {
-        var targetCol = startCol + j;
-        if (targetCol >= colCount) break;
-        var val = rowData[j] != null ? String(rowData[j]) : "";
-        updateCell(state.activeSheet, targetRow, targetCol, val);
+
+      // 決定貼上策略
+      if (isSingleCell) {
+        // 剪貼簿是 1x1，填滿整個 targetRect
+        var singleValue = (clipboardData[0] && clipboardData[0][0] != null) ? String(clipboardData[0][0]) : "";
+        for (var r = targetRect.startRow; r <= targetRect.endRow; r++) {
+          for (var c = targetRect.startCol; c <= targetRect.endCol; c++) {
+            if (c >= 0 && c < colCount) {
+              updateCell(state.activeSheet, r, c, singleValue);
+            }
+          }
+        }
+      } else {
+        // 剪貼簿是矩形區塊，需要平鋪
+        for (var r = targetRect.startRow; r <= targetRect.endRow; r++) {
+          for (var c = targetRect.startCol; c <= targetRect.endCol; c++) {
+            if (c >= 0 && c < colCount) {
+              // 使用 modulo 計算對應的剪貼簿位置（平鋪）
+              var srcRow = (r - targetRect.startRow) % clipboardRows;
+              var srcCol = (c - targetRect.startCol) % clipboardCols;
+              var val = (clipboardData[srcRow] && clipboardData[srcRow][srcCol] != null) ? String(clipboardData[srcRow][srcCol]) : "";
+              updateCell(state.activeSheet, r, c, val);
+            }
+          }
+        }
       }
     }
 
     // hook: 只有「貼上成功」且 lastClipboardOp==="cut" 且 cutCells 存在時，才清空剪下來源（並避免與貼上目標重疊）
     if (state.lastClipboardOp === "cut" && state.cutCells && state.cutCells.sheet && state.cutCells.cells) {
-      var maxCol = data.reduce(function (m, r) { return Math.max(m, r.length); }, 0) || 0;
-      var endRow = startRow + data.length - 1;
-      var endCol = startCol + Math.max(0, maxCol - 1);
-      console.log("[doPaste] clearing cut sources, count=", state.cutCells.cells.length, "avoid overlap", startRow, startCol, endRow, endCol);
-      state.cutCells.cells.forEach(function (c) {
-        if (state.cutCells.sheet !== state.activeSheet) {
-          updateCell(state.cutCells.sheet, c.row, c.col, "");
-        } else if (c.row < startRow || c.row > endRow || c.col < startCol || c.col > endCol) {
-          updateCell(state.cutCells.sheet, c.row, c.col, "");
-        }
-      });
+      var pasteEndRow, pasteEndCol;
+      if (targetCells) {
+        // multiSelection 且 1x1：計算實際貼上的範圍
+        var minRow = Math.min.apply(null, targetCells.map(function (c) { return c.row; }));
+        var maxRow = Math.max.apply(null, targetCells.map(function (c) { return c.row; }));
+        var minCol = Math.min.apply(null, targetCells.map(function (c) { return c.col; }));
+        var maxCol = Math.max.apply(null, targetCells.map(function (c) { return c.col; }));
+        pasteEndRow = maxRow;
+        pasteEndCol = maxCol;
+        var pasteStartRow = minRow;
+        var pasteStartCol = minCol;
+        console.log("[doPaste] clearing cut sources (multiSelection), count=", state.cutCells.cells.length, "avoid overlap", pasteStartRow, pasteStartCol, pasteEndRow, pasteEndCol);
+        state.cutCells.cells.forEach(function (c) {
+          if (state.cutCells.sheet !== state.activeSheet) {
+            updateCell(state.cutCells.sheet, c.row, c.col, "");
+          } else if (c.row < pasteStartRow || c.row > pasteEndRow || c.col < pasteStartCol || c.col > pasteEndCol) {
+            updateCell(state.cutCells.sheet, c.row, c.col, "");
+          }
+        });
+      } else if (targetRect) {
+        pasteEndRow = targetRect.endRow;
+        pasteEndCol = targetRect.endCol;
+        var pasteStartRow = targetRect.startRow;
+        var pasteStartCol = targetRect.startCol;
+        console.log("[doPaste] clearing cut sources, count=", state.cutCells.cells.length, "avoid overlap", pasteStartRow, pasteStartCol, pasteEndRow, pasteEndCol);
+        state.cutCells.cells.forEach(function (c) {
+          if (state.cutCells.sheet !== state.activeSheet) {
+            updateCell(state.cutCells.sheet, c.row, c.col, "");
+          } else if (c.row < pasteStartRow || c.row > pasteEndRow || c.col < pasteStartCol || c.col > pasteEndCol) {
+            updateCell(state.cutCells.sheet, c.row, c.col, "");
+          }
+        });
+      }
       clearCutState();
     }
     commitAction();
