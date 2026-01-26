@@ -919,7 +919,7 @@ function downloadWorkbook(workbookKey, timestamp) {
     var ITEM_DATA = [
       ["1", "匯率", "Exchange Rate", "Exchange Rate", "Required", ""],
       ["2", "資源", "Resource", "Resource", "Required", ""],
-      ["3", "資源動因(作業中心)", "Resource Driver(Activity Center)", "Resource Driver(Activity Center)", "Required", ""],
+      ["3", "資源動因(作業中心)", "Resource Driver(Actvity Center)", "Resource Driver(Actvity Center)", "Required", ""],
       ["4", "資源動因(標的)", "Resource Driver(Value Object)", "Resource Driver(Value Object)", "Required", ""],
       ["5", "資源動因(機台)", "Resource Driver(Machine)", "Resource Driver(Machine)", "Required", "製造業 Required；其它產業 Optional"],
       ["6", "資源動因(管理作業中心)", "Resource Driver(Management Activity Center)", "Resource Driver(M. A. C.)", "Required", ""],
