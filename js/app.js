@@ -7,6 +7,7 @@ const state = {
   studentId: null,
   activeGroup: "ModelData",
   activeSheet: "Company",
+  activePeriod: null, // YYYY-MM 格式，Period Data 模式時使用
   data: {},
   changeLog: [],
   activeCell: null,
@@ -26,6 +27,52 @@ const state = {
 let _dragAnchor = null;
 
 let saveTimeout = null;
+
+// --- Period Management helpers ---
+
+function isValidPeriodFormat(period) {
+  // 驗證格式 YYYY-MM
+  var match = String(period).match(/^(\d{4})-(\d{2})$/);
+  if (!match) return false;
+  var year = parseInt(match[1], 10);
+  var month = parseInt(match[2], 10);
+  return year >= 2024 && year <= 2032 && month >= 1 && month <= 12;
+}
+
+function getAllPeriodsFromStorage() {
+  // 從 localStorage 讀取所有已建立的月份
+  if (!state.studentId) return [];
+  var key = "excelForm_v1_" + state.studentId;
+  var saved = localStorage.getItem(key);
+  if (!saved) return [];
+  try {
+    var parsed = JSON.parse(saved);
+    if (parsed.periods && typeof parsed.periods === "object") {
+      return Object.keys(parsed.periods).sort();
+    }
+  } catch (e) {
+    console.error("Error reading periods:", e);
+  }
+  return [];
+}
+
+function getCurrentPeriodData() {
+  // 取得當前月份的資料（如果 activeGroup 是 PeriodData）
+  if (state.activeGroup !== "PeriodData" || !state.activePeriod) return null;
+  if (!state.studentId) return null;
+  var key = "excelForm_v1_" + state.studentId;
+  var saved = localStorage.getItem(key);
+  if (!saved) return null;
+  try {
+    var parsed = JSON.parse(saved);
+    if (parsed.periods && parsed.periods[state.activePeriod]) {
+      return parsed.periods[state.activePeriod];
+    }
+  } catch (e) {
+    console.error("Error reading period data:", e);
+  }
+  return null;
+}
 
 // --- Selection helpers ---
 
@@ -496,14 +543,77 @@ function loadStudentData(studentId) {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      state.data = parsed.data || {};
-      state.changeLog = parsed.changeLog || [];
+      
+      // 向下相容：如果沒有 periods，將舊資料遷移到預設月份
+      if (!parsed.periods || typeof parsed.periods !== "object") {
+        // 舊版本資料，遷移到 2024-01
+        var defaultPeriod = "2024-01";
+        parsed.periods = {};
+        if (parsed.data && Object.keys(parsed.data).length > 0) {
+          // 檢查是否為 PeriodData
+          var hasPeriodSheets = false;
+          for (var sheetName in parsed.data) {
+            var config = getSheetConfig(sheetName);
+            if (config && config.workbook === "PeriodData") {
+              hasPeriodSheets = true;
+              break;
+            }
+          }
+          if (hasPeriodSheets) {
+            parsed.periods[defaultPeriod] = {
+              data: parsed.data || {},
+              changeLog: parsed.changeLog || [],
+              activeSheet: parsed.activeSheet || "Exchange Rate"
+            };
+            // 清除舊的 data 和 changeLog（已遷移到 periods）
+            parsed.data = {};
+            parsed.changeLog = [];
+            showStatus("Data structure upgraded. Period data migrated to " + defaultPeriod);
+          }
+        }
+        // 儲存遷移後的資料
+        localStorage.setItem(key, JSON.stringify(parsed));
+      }
+      
+      // 載入當前 activeGroup 的資料
+      state.activeGroup = parsed.activeGroup || "ModelData";
+      
+      if (state.activeGroup === "PeriodData") {
+        // PeriodData 模式：從 periods 載入
+        state.activePeriod = parsed.activePeriod || null;
+        if (state.activePeriod && parsed.periods[state.activePeriod]) {
+          var periodData = parsed.periods[state.activePeriod];
+          state.data = periodData.data || {};
+          state.changeLog = periodData.changeLog || [];
+          state.activeSheet = periodData.activeSheet || "Exchange Rate";
+        } else {
+          // 沒有選擇月份或月份不存在，使用第一個可用月份或初始化
+          var availablePeriods = Object.keys(parsed.periods || {}).sort();
+          if (availablePeriods.length > 0) {
+            state.activePeriod = availablePeriods[0];
+            var periodData = parsed.periods[state.activePeriod];
+            state.data = periodData.data || {};
+            state.changeLog = periodData.changeLog || [];
+            state.activeSheet = periodData.activeSheet || "Exchange Rate";
+          } else {
+            // 沒有任何月份，初始化
+            state.activePeriod = null;
+            initFromTemplate();
+            state.activeSheet = "Exchange Rate";
+          }
+        }
+      } else {
+        // ModelData 模式：直接從根層級載入（向下相容）
+        state.data = parsed.data || {};
+        state.changeLog = parsed.changeLog || [];
+        state.activePeriod = null;
+        const order = getSheetsForWorkbook(state.activeGroup);
+        state.activeSheet = order.includes(parsed.activeSheet) ? parsed.activeSheet : (order[0] || "Company");
+      }
+      
       state.undoStack = [];
       state.redoStack = [];
       state._tx = null;
-      state.activeGroup = parsed.activeGroup || "ModelData";
-      const order = getSheetsForWorkbook(state.activeGroup);
-      state.activeSheet = order.includes(parsed.activeSheet) ? parsed.activeSheet : (order[0] || "Company");
       ensureAllSheets();
       // TableMapping 永遠使用系統定義，不從 localStorage 讀取
       var tmHeaders = TABLE_MAPPING_HEADERS.map(function (h) { return h; });
@@ -717,17 +827,47 @@ function hideStudentIdModal() {
 function saveToStorage() {
   if (!state.studentId) return;
   const key = "excelForm_v1_" + state.studentId;
-  const saveData = {
-    version: 1,
-    studentId: state.studentId,
-    lastModified: new Date().toISOString(),
-    activeGroup: state.activeGroup,
-    activeSheet: state.activeSheet,
-    data: state.data,
-    changeLog: state.changeLog
-  };
+  
+  // 讀取現有資料（保留 periods 和其他欄位）
+  var existingData = {};
   try {
-    localStorage.setItem(key, JSON.stringify(saveData));
+    var existing = localStorage.getItem(key);
+    if (existing) {
+      existingData = JSON.parse(existing);
+    }
+  } catch (e) {
+    console.error("Error reading existing data:", e);
+  }
+  
+  // 根據 activeGroup 決定儲存方式
+  if (state.activeGroup === "PeriodData" && state.activePeriod) {
+    // PeriodData 模式：儲存到 periods[activePeriod]
+    if (!existingData.periods) existingData.periods = {};
+    existingData.periods[state.activePeriod] = {
+      data: state.data,
+      changeLog: state.changeLog,
+      activeSheet: state.activeSheet
+    };
+    existingData.activePeriod = state.activePeriod;
+    existingData.activeGroup = state.activeGroup;
+    existingData.studentId = state.studentId;
+    existingData.lastModified = new Date().toISOString();
+    existingData.version = existingData.version || 1;
+  } else {
+    // ModelData 模式：儲存到根層級（向下相容）
+    existingData.version = existingData.version || 1;
+    existingData.studentId = state.studentId;
+    existingData.lastModified = new Date().toISOString();
+    existingData.activeGroup = state.activeGroup;
+    existingData.activeSheet = state.activeSheet;
+    existingData.data = state.data;
+    existingData.changeLog = state.changeLog;
+    // 保留 periods（如果存在）
+    if (!existingData.periods) existingData.periods = {};
+  }
+  
+  try {
+    localStorage.setItem(key, JSON.stringify(existingData));
     showStatus("Saved (" + state.changeLog.length + " changes)");
   } catch (e) {
     console.error("Storage error:", e);
@@ -907,19 +1047,28 @@ function downloadExcel() {
     showStatus("Enter your company name first", "error");
     return;
   }
+  if (state.activeGroup === "PeriodData" && !state.activePeriod) {
+    showStatus("Please select a period first", "error");
+    return;
+  }
   const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
   const wbKey = state.activeGroup;
-  downloadWorkbook(wbKey, timestamp);
+  var periodSuffix = "";
+  if (wbKey === "PeriodData" && state.activePeriod) {
+    periodSuffix = "_" + state.activePeriod.replace("-", "");
+  }
+  downloadWorkbook(wbKey, timestamp, periodSuffix);
   if (wbKey === "ModelData") {
     showStatus("Downloaded ModelData file");
   } else if (wbKey === "PeriodData") {
-    showStatus("Downloaded PeriodData file");
+    showStatus("Downloaded PeriodData file for " + state.activePeriod);
   } else {
     showStatus("Downloaded " + wbKey + " file");
   }
 }
 
-function downloadWorkbook(workbookKey, timestamp) {
+function downloadWorkbook(workbookKey, timestamp, periodSuffix) {
+  periodSuffix = periodSuffix || "";
   const wb = XLSX.utils.book_new();
   const workbookConfig = TEMPLATE_DATA.workbooks[workbookKey];
   const allSheets = Object.entries(TEMPLATE_DATA.sheets).filter(function (entry) {
@@ -1087,7 +1236,7 @@ function downloadWorkbook(workbookKey, timestamp) {
     }
   }
 
-  const filename = workbookConfig.filename + "_" + state.studentId + "_" + timestamp + ".xlsx";
+  const filename = workbookConfig.filename + periodSuffix + "_" + state.studentId + "_" + timestamp + ".xlsx";
   XLSX.writeFile(wb, filename);
 }
 
@@ -1096,6 +1245,10 @@ function downloadWorkbook(workbookKey, timestamp) {
 function uploadBackup(file) {
   if (!state.studentId) {
     showStatus("Enter your company name first", "error");
+    return;
+  }
+  if (state.activeGroup === "PeriodData" && !state.activePeriod) {
+    showStatus("Please select a period first", "error");
     return;
   }
   const reader = new FileReader();
@@ -1234,13 +1387,20 @@ function uploadBackup(file) {
       migrateACAPDescriptionColumn();
       migrateADriverDescriptionColumn();
       migrateADriverActivityDescriptionColumn();
-      saveToStorage();
-      renderAll();
-      if (workbookKey === "PeriodData") {
-        showStatus("Restored " + workbookKey + " backup. TableMapping restored to system default.");
+      // PeriodData 上傳後只套用到當前月份
+      if (workbookKey === "PeriodData" && state.activePeriod) {
+        // 資料已經寫入 state.data，現在儲存到當前月份
+        saveToStorage();
+        showStatus("Restored " + workbookKey + " backup for " + state.activePeriod + ". TableMapping restored to system default.");
       } else {
-        showStatus("Restored " + workbookKey + " backup");
+        saveToStorage();
+        if (workbookKey === "PeriodData") {
+          showStatus("Restored " + workbookKey + " backup. TableMapping restored to system default.");
+        } else {
+          showStatus("Restored " + workbookKey + " backup");
+        }
       }
+      renderAll();
     } catch (err) {
       console.error(err);
       showStatus("Error reading file", "error");
@@ -1280,10 +1440,33 @@ function detectWorkbook(sheetNames) {
 // --- Reset ---
 
 function resetData() {
-  initFromTemplate();
-  saveToStorage();
-  renderAll();
-  showStatus("Data reset to template");
+  if (state.activeGroup === "PeriodData" && state.activePeriod) {
+    // PeriodData 模式：只重置當前月份
+    initFromTemplate();
+    // 只保留 PeriodData 的 sheets
+    var periodSheets = {};
+    for (var sheetName in state.data) {
+      var config = getSheetConfig(sheetName);
+      if (config && config.workbook === "PeriodData") {
+        periodSheets[sheetName] = state.data[sheetName];
+      }
+    }
+    state.data = periodSheets;
+    state.changeLog = [];
+    state.undoStack = [];
+    state.redoStack = [];
+    state._tx = null;
+    ensureAllSheets();
+    saveToStorage();
+    renderAll();
+    showStatus("Period " + state.activePeriod + " reset to template");
+  } else {
+    // ModelData 模式：重置所有
+    initFromTemplate();
+    saveToStorage();
+    renderAll();
+    showStatus("Data reset to template");
+  }
 }
 
 // --- Rendering ---
@@ -1302,6 +1485,173 @@ function renderWorkbookToggle() {
   if (btnDownload) {
     btnDownload.textContent = state.activeGroup === "ModelData" ? "Download Model Data" : "Download Period Data";
   }
+  // 顯示/隱藏 period selector
+  var periodContainer = document.getElementById("periodSelectorContainer");
+  if (periodContainer) {
+    periodContainer.style.display = state.activeGroup === "PeriodData" ? "flex" : "none";
+  }
+  // 更新 period selector 選項
+  if (state.activeGroup === "PeriodData") {
+    updatePeriodSelector();
+  }
+}
+
+function updatePeriodSelector() {
+  var select = document.getElementById("periodSelect");
+  if (!select) return;
+  var periods = getAllPeriodsFromStorage();
+  select.innerHTML = '<option value="">-- Select Period --</option>';
+  periods.forEach(function (period) {
+    var option = document.createElement("option");
+    option.value = period;
+    option.textContent = period;
+    if (period === state.activePeriod) {
+      option.selected = true;
+    }
+    select.appendChild(option);
+  });
+}
+
+function switchPeriod(period) {
+  if (!isValidPeriodFormat(period)) {
+    showStatus("Invalid period format. Must be YYYY-MM (2024-01 to 2032-12)", "error");
+    return;
+  }
+  if (!state.studentId) {
+    showStatus("Please enter company name first", "error");
+    return;
+  }
+  
+  // 儲存當前月份的資料（如果有）
+  if (state.activePeriod) {
+    saveToStorage();
+  }
+  
+  // 切換到新月份
+  state.activePeriod = period;
+  var key = "excelForm_v1_" + state.studentId;
+  var saved = localStorage.getItem(key);
+  if (saved) {
+    try {
+      var parsed = JSON.parse(saved);
+      if (!parsed.periods) parsed.periods = {};
+      
+      if (parsed.periods[period]) {
+        // 月份已存在，載入資料
+        var periodData = parsed.periods[period];
+        state.data = periodData.data || {};
+        state.changeLog = periodData.changeLog || [];
+        state.activeSheet = periodData.activeSheet || "Exchange Rate";
+      } else {
+        // 月份不存在，初始化（使用 template）
+        initFromTemplate();
+        // 只保留 PeriodData 的 sheets
+        var periodSheets = {};
+        for (var sheetName in state.data) {
+          var config = getSheetConfig(sheetName);
+          if (config && config.workbook === "PeriodData") {
+            periodSheets[sheetName] = state.data[sheetName];
+          }
+        }
+        state.data = periodSheets;
+        state.activeSheet = "Exchange Rate";
+        ensureAllSheets();
+      }
+      
+      // 更新 storage
+      parsed.activePeriod = period;
+      parsed.activeGroup = "PeriodData";
+      localStorage.setItem(key, JSON.stringify(parsed));
+      
+      state.undoStack = [];
+      state.redoStack = [];
+      state._tx = null;
+      clearCutState();
+      renderAll();
+      showStatus("Switched to period " + period);
+    } catch (e) {
+      console.error("Error switching period:", e);
+      showStatus("Error switching period", "error");
+    }
+  }
+}
+
+function createNewPeriod() {
+  if (!state.studentId) {
+    showStatus("Please enter company name first", "error");
+    return;
+  }
+  
+  var period = prompt("Enter period (YYYY-MM, e.g. 2024-01):");
+  if (!period) return;
+  
+  period = String(period).trim();
+  if (!isValidPeriodFormat(period)) {
+    showStatus("Invalid period format. Must be YYYY-MM (2024-01 to 2032-12)", "error");
+    return;
+  }
+  
+  var periods = getAllPeriodsFromStorage();
+  if (periods.indexOf(period) >= 0) {
+    showStatus("Period " + period + " already exists", "error");
+    return;
+  }
+  
+  // 儲存當前月份的資料（如果有）
+  if (state.activePeriod) {
+    saveToStorage();
+  }
+  
+  // 建立新月份：使用 template（空白）或複製當前月份
+  var key = "excelForm_v1_" + state.studentId;
+  var saved = localStorage.getItem(key);
+  var parsed = saved ? JSON.parse(saved) : {};
+  if (!parsed.periods) parsed.periods = {};
+  
+  // 策略：如果當前有月份，複製當前月份；否則使用 template
+  var newPeriodData;
+  if (state.activePeriod && parsed.periods[state.activePeriod]) {
+    // 複製當前月份
+    var currentData = parsed.periods[state.activePeriod];
+    newPeriodData = {
+      data: JSON.parse(JSON.stringify(currentData.data || {})),
+      changeLog: [],
+      activeSheet: currentData.activeSheet || "Exchange Rate"
+    };
+  } else {
+    // 使用 template
+    initFromTemplate();
+    var periodSheets = {};
+    for (var sheetName in state.data) {
+      var config = getSheetConfig(sheetName);
+      if (config && config.workbook === "PeriodData") {
+        periodSheets[sheetName] = JSON.parse(JSON.stringify(state.data[sheetName]));
+      }
+    }
+    newPeriodData = {
+      data: periodSheets,
+      changeLog: [],
+      activeSheet: "Exchange Rate"
+    };
+  }
+  
+  parsed.periods[period] = newPeriodData;
+  parsed.activePeriod = period;
+  parsed.activeGroup = "PeriodData";
+  localStorage.setItem(key, JSON.stringify(parsed));
+  
+  // 切換到新月份
+  state.activePeriod = period;
+  state.data = newPeriodData.data;
+  state.changeLog = [];
+  state.activeSheet = newPeriodData.activeSheet;
+  state.undoStack = [];
+  state.redoStack = [];
+  state._tx = null;
+  clearCutState();
+  ensureAllSheets();
+  renderAll();
+  showStatus("Created and switched to period " + period);
 }
 
 function renderGroupedNav() {
@@ -1925,14 +2275,56 @@ function bindEvents() {
   document.querySelectorAll(".workbook-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
       const wb = btn.getAttribute("data-workbook");
+      // 儲存當前資料
+      if (state.activeGroup === "PeriodData" && state.activePeriod) {
+        saveToStorage();
+      } else if (state.activeGroup === "ModelData") {
+        saveToStorage();
+      }
+      
       state.activeGroup = wb;
-      const order = getSheetsForWorkbook(wb);
-      state.activeSheet = order[0] || "Company";
-      clearCutState(); // 切 workbook 時清除 cut
-      renderAll();
+      if (wb === "PeriodData") {
+        // 切換到 PeriodData：載入當前月份或第一個可用月份
+        var periods = getAllPeriodsFromStorage();
+        if (periods.length > 0) {
+          state.activePeriod = periods[0];
+          switchPeriod(state.activePeriod);
+        } else {
+          state.activePeriod = null;
+          const order = getSheetsForWorkbook(wb);
+          state.activeSheet = order[0] || "Exchange Rate";
+          clearCutState();
+          renderAll();
+        }
+      } else {
+        // 切換到 ModelData：清除 activePeriod
+        state.activePeriod = null;
+        const order = getSheetsForWorkbook(wb);
+        state.activeSheet = order[0] || "Company";
+        clearCutState();
+        renderAll();
+      }
       autoSave();
     });
   });
+
+  // Period selector 事件
+  var periodSelect = document.getElementById("periodSelect");
+  if (periodSelect) {
+    periodSelect.addEventListener("change", function () {
+      var period = this.value;
+      if (period && period !== state.activePeriod) {
+        switchPeriod(period);
+      }
+    });
+  }
+
+  var btnCreatePeriod = document.getElementById("btnCreatePeriod");
+  if (btnCreatePeriod) {
+    btnCreatePeriod.addEventListener("click", function () {
+      createNewPeriod();
+    });
+  }
 
   document.getElementById("inputUpload").addEventListener("change", function () {
     const f = this.files && this.files[0];
