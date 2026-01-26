@@ -65,10 +65,15 @@ function updateSelectionUI() {
   const tbody = document.getElementById("tableBody");
   if (!tbody) return;
   const inputs = tbody.querySelectorAll("input[data-sheet][data-row][data-col]");
+  const isTableMapping = (state.activeSheet === "TableMapping");
   inputs.forEach(function (inp) {
     inp.classList.remove("cell-active", "cell-selected", "cell-cut", "cell-editing");
     var isActive = state.activeCell && inp.dataset.row === String(state.activeCell.row) && inp.dataset.col === String(state.activeCell.col);
-    if (isActive && state.editMode) {
+    // TableMapping 永遠唯讀
+    if (isTableMapping) {
+      inp.setAttribute("readonly", "readonly");
+      if (isActive) inp.classList.add("cell-active");
+    } else if (isActive && state.editMode) {
       inp.removeAttribute("readonly");
       inp.classList.add("cell-active", "cell-editing");
     } else {
@@ -402,6 +407,10 @@ function loadStudentData(studentId) {
       const order = getSheetsForWorkbook(state.activeGroup);
       state.activeSheet = order.includes(parsed.activeSheet) ? parsed.activeSheet : (order[0] || "Company");
       ensureAllSheets();
+      // TableMapping 永遠使用系統定義，不從 localStorage 讀取
+      var tmHeaders = TABLE_MAPPING_HEADERS.map(function (h) { return h; });
+      var tmData = TABLE_MAPPING_DATA.map(function (row) { return row.map(function (cell) { return cell; }); });
+      state.data["TableMapping"] = { headers: tmHeaders, data: tmData };
       migrateMACHeaderNames();
       migrateSACHeaderNames();
       migrateACAPDescriptionColumn();
@@ -463,7 +472,11 @@ function initFromTemplate() {
     }
     var headers = [...config.headers];
     var data;
-    if (config.workbook === "ModelData" && DEFAULT_ROWS_MODEL_MAP[sheetName] != null) {
+    if (sheetName === "TableMapping") {
+      // TableMapping 永遠使用系統定義（深拷貝）
+      headers = TABLE_MAPPING_HEADERS.map(function (h) { return h; });
+      data = TABLE_MAPPING_DATA.map(function (row) { return row.map(function (cell) { return cell; }); });
+    } else if (config.workbook === "ModelData" && DEFAULT_ROWS_MODEL_MAP[sheetName] != null) {
       data = makeBlankRows(headers.length, DEFAULT_ROWS_MODEL_MAP[sheetName]);
     } else {
       data = config.data.map(function (row) { return [...row]; });
@@ -564,6 +577,13 @@ function migrateADriverActivityDescriptionColumn() {
 
 function ensureAllSheets() {
   for (const [sheetName, config] of Object.entries(TEMPLATE_DATA.sheets)) {
+    if (sheetName === "TableMapping") {
+      // TableMapping 永遠使用系統定義（深拷貝），不從 localStorage 讀取
+      var headers = TABLE_MAPPING_HEADERS.map(function (h) { return h; });
+      var data = TABLE_MAPPING_DATA.map(function (row) { return row.map(function (cell) { return cell; }); });
+      state.data[sheetName] = { headers: headers, data: data };
+      continue;
+    }
     if (state.data[sheetName]) continue;
     if (!config.headers || config.headers.length === 0) {
       state.data[sheetName] = { headers: [], data: [] };
@@ -699,6 +719,10 @@ function updateCell(sheetName, rowIndex, colIndex, newValue, opts) {
   opts = opts || {};
   var skipLog = opts.skipLog;
   var skipUndo = opts.skipUndo;
+  // TableMapping 是系統對照表，不允許修改
+  if (sheetName === "TableMapping") {
+    return;
+  }
   const sheet = state.data[sheetName];
   if (!sheet || !sheet.data[rowIndex]) return;
   const oldValue = sheet.data[rowIndex][colIndex];
@@ -918,86 +942,13 @@ function downloadWorkbook(workbookKey, timestamp) {
       XLSX.utils.book_append_sheet(wb, itemWs, "Item");
     }
 
-    // PeriodData：覆蓋 "TableMapping" 工作表為固定系統對照表（headers + 74 列），確保下載時永遠是正確內容
-    var TM_HEADERS = ["Table", "Table欄位名稱", "Excel 中文欄位名稱", "Excel 英文欄位名稱"];
-    var TM_DATA = [
-      ["ExExchangeRate", "BusinessUnitCurrency", "事業單位幣別", "Business Unit Currency"],
-      ["ExExchangeRate", "CompanyCurrency", "公司幣別", "Company Currency"],
-      ["ExExchangeRate", "ExchangeRate", "匯率值", "Exchange Rate"],
-      ["ExResource", "BusinessUnitNo", "事業單位", "Business Unit"],
-      ["ExResource", "ResourceNo", "資源代碼", "Resource Code"],
-      ["ExResource", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
-      ["ExResource", "Amount", "金額", "Amount"],
-      ["ExResource", "ValueObjectType", "價值標的類別", "Value Object Type"],
-      ["ExResource", "ValueObjectNo", "價值標的代碼", "Value Object Code"],
-      ["ExResource", "MachineGroupNo", "機台代碼", "Machine Code"],
-      ["ExResource", "ProductNo", "產品代碼", "Product Code"],
-      ["ExResourceDriverAC", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
-      ["ExResourceDriverValueObject", "BusinessUnitNo", "事業單位", "Business Unit"],
-      ["ExResourceDriverValueObject", "ValueObjectType", "價值標的類別", "Value Object Type"],
-      ["ExResourceDriverValueObject", "ValueObjectNo", "價值標的代碼", "Value Object Code"],
-      ["ExResourceDriverMachine", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
-      ["ExResourceDriverMachine", "MachineGroupNo", "機台代碼", "Machine Code"],
-      ["ExResourceDriverManagementAC", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
-      ["ExResourceDriverManagementAC", "MachineGroupNo", "機台代碼", "Machine Code"],
-      ["ExResourceDriverSupportingAC", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
-      ["ExResourceDriverSupportingAC", "MachineGroupNo", "機台代碼", "Machine Code"],
-      ["ExACDriverNormalCapacity", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
-      ["ExACDriverNormalCapacity", "MachineGroupNo", "機台代碼", "Machine Code"],
-      ["ExACDriverNormalCapacity", "ActivityNo", "作業代碼", "Activity Code"],
-      ["ExACDriverNormalCapacity", "NormalCapacityHours", "正常產能時間", "Normal Capacity Hours"],
-      ["ExACDriverActualCapacity", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
-      ["ExACDriverActualCapacity", "MachineGroupNo", "機台代碼", "Machine Code"],
-      ["ExACDriverActualCapacity", "SupportedActivityCenterNo", "受援作業中心代碼", "Supported Activity Center Code"],
-      ["ExACDriverActualCapacity", "ActivityNo", "作業代碼", "Activity Code"],
-      ["ExACDriverActualCapacity", "ActualCapacityHours", "實際產能時間", "Actual Capacity Hours"],
-      ["ExACDriverActualCapacity", "ValueObjectNo", "價值標的代碼", "Value Object Code"],
-      ["ExACDriverActualCapacity", "ValueObjectType", "價值標的類別", "Value Object Type"],
-      ["ExACDriverActualCapacity", "ProductNo", "產品代碼", "Product Code"],
-      ["ExActivityDriver", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
-      ["ExActivityDriver", "MachineGroupNo", "機台代碼", "Machine Code"],
-      ["ExActivityDriver", "ActivityNo", "作業代碼", "Activity Code"],
-      ["ExActivityDriver", "ActivityDriverNo", "作業動因", "Activity Driver"],
-      ["ExActivityDriver", "ActivityDriverValue", "作業動因值", "Activity Driver Value"],
-      ["ExActivityDriver", "ValueObjectNo", "價值標的代碼", "Value Object Code"],
-      ["ExActivityDriver", "ValueObjectType", "價值標的類別", "Value Object Type"],
-      ["ExActivityDriver", "ProductNo", "產品代碼", "Product Code"],
-      ["ExProductProjectDriver", "ProductNo", "產品代碼", "Product Code"],
-      ["ExProductProjectDriver", "ProjectDriverNo", "專案動因", "Project Driver"],
-      ["ExProductProjectDriver", "ProjectDriverValue", "專案動因值", "Project Driver Value"],
-      ["ExManufactureOrder", "BusinessUnitNo", "事業單位", "Business Unit"],
-      ["ExManufactureOrder", "MO", "製令", "MO"],
-      ["ExManufactureOrder", "ProductNo", "產品", "Product Code"],
-      ["ExManufactureOrder", "Quantity", "完工數量(PC)", "Quantity"],
-      ["ExManufactureOrder", "Closed", "製令關閉", "Closed"],
-      ["ExManufactureMaterial", "BusinessUnitNo", "事業單位", "Business Unit"],
-      ["ExManufactureMaterial", "MO", "製令", "MO"],
-      ["ExManufactureMaterial", "MaterialNo", "材料", "Material Code"],
-      ["ExManufactureMaterial", "Quantity", "用料數量", "Quantity"],
-      ["ExManufactureMaterial", "Amount", "購入金額", "Amount"],
-      ["ExPurchasedMaterialAndWIP", "BusinessUnitNo", "事業單位", "Business Unit"],
-      ["ExPurchasedMaterialAndWIP", "MaterialNo", "料號", "Material Code"],
-      ["ExPurchasedMaterialAndWIP", "Quantity", "本期數量", "Quantity"],
-      ["ExPurchasedMaterialAndWIP", "Amount", "本期總金額", "Amount"],
-      ["ExPurchasedMaterialAndWIP", "EndInventoryQty", "期末庫存數量", "End Inventory Qty"],
-      ["ExPurchasedMaterialAndWIP", "Unit", "單位", "Unit"],
-      ["ExPurchasedMaterialAndWIP", "EndInventoryAmount", "期末庫存金額", "End Inventory Amount"],
-      ["ExExpectedProjectValue", "ProjectNo", "專案代碼", "Project Code"],
-      ["ExExpectedProjectValue", "TotalProjectDriverValue", "預估專案動因總值", "Total Project Driver Value"],
-      ["ExSalesRevenue", "OrderNo", "訂單編號", "Order No"],
-      ["ExSalesRevenue", "CustomerNo", "顧客代碼", "Customer Code"],
-      ["ExSalesRevenue", "ProductNo", "產品代碼", "Product Code"],
-      ["ExSalesRevenue", "Quantity", "數量", "Quantity"],
-      ["ExSalesRevenue", "Amount", "收入金額", "Amount"],
-      ["ExSalesRevenue", "SalesActivityCenterNo", "銷售作業中心代碼", "Sales Activity Center Code"],
-      ["ExSalesRevenue", "ShipmentBusinessUnitNo", "出貨事業單位", "Shipment Business Unit"],
-      ["ExServiceDriver", "BusinessUnitNo", "事業單位", "Business Unit"],
-      ["ExServiceDriver", "CustomerNo", "顧客代碼", "Customer Code"],
-      ["ExServiceDriver", "ProductNo", "產品代碼", "Product Code"]
-    ];
-    var tmAoA = [TM_HEADERS].concat(TM_DATA).map(function (row) {
-      return row.map(function (c) { return String(c == null ? "" : c).trim(); });
-    });
+    // PeriodData：覆蓋 "TableMapping" 工作表為固定系統對照表（5 欄表頭 + 74 列資料），確保下載時永遠是正確內容
+    // 使用系統定義的 TABLE_MAPPING_HEADERS 和 TABLE_MAPPING_DATA，保留所有尾部空格（不 trim）
+    var tmAoA = [TABLE_MAPPING_HEADERS.map(function (h) { return h; })].concat(
+      TABLE_MAPPING_DATA.map(function (row) {
+        return row.map(function (cell) { return cell; }); // 深拷貝，保留尾部空格
+      })
+    );
     var tmWs = XLSX.utils.aoa_to_sheet(tmAoA);
     if (wb.SheetNames.indexOf("TableMapping") !== -1) {
       wb.Sheets["TableMapping"] = tmWs;
@@ -1159,6 +1110,12 @@ function uploadBackup(file) {
       }
 
       ensureAllSheets();
+      // TableMapping 不論上傳內容為何，一律恢復為系統定義
+      if (workbookKey === "PeriodData") {
+        var tmHeaders = TABLE_MAPPING_HEADERS.map(function (h) { return h; });
+        var tmData = TABLE_MAPPING_DATA.map(function (row) { return row.map(function (cell) { return cell; }); });
+        state.data["TableMapping"] = { headers: tmHeaders, data: tmData };
+      }
       migrateMACHeaderNames();
       migrateSACHeaderNames();
       migrateACAPDescriptionColumn();
@@ -1166,7 +1123,11 @@ function uploadBackup(file) {
       migrateADriverActivityDescriptionColumn();
       saveToStorage();
       renderAll();
-      showStatus("Restored " + workbookKey + " backup");
+      if (workbookKey === "PeriodData") {
+        showStatus("Restored " + workbookKey + " backup. TableMapping restored to system default.");
+      } else {
+        showStatus("Restored " + workbookKey + " backup");
+      }
     } catch (err) {
       console.error(err);
       showStatus("Error reading file", "error");
@@ -1305,7 +1266,13 @@ function renderTable() {
     return;
   }
 
-  document.getElementById("btnAddRow").style.display = "";
+  // TableMapping 是系統對照表，唯讀
+  const isTableMapping = (state.activeSheet === "TableMapping");
+  if (isTableMapping) {
+    document.getElementById("btnAddRow").style.display = "none";
+  } else {
+    document.getElementById("btnAddRow").style.display = "";
+  }
 
   if (sheet.headers && sheet.headers.length > 0 && (!sheet.data || sheet.data.length === 0)) {
     sheet.data = [Array(sheet.headers.length).fill("")];
@@ -1605,7 +1572,13 @@ function renderTable() {
       const input = document.createElement("input");
       input.type = "text";
       input.value = val;
-      input.setAttribute("readonly", "readonly");
+      // TableMapping 永遠唯讀
+      if (isTableMapping) {
+        input.setAttribute("readonly", "readonly");
+        input.classList.add("cell-readonly");
+      } else {
+        input.setAttribute("readonly", "readonly");
+      }
       input.dataset.sheet = state.activeSheet;
       input.dataset.row = String(rowIndex);
       input.dataset.col = String(colIndex);
@@ -1613,24 +1586,29 @@ function renderTable() {
         input.classList.add("cell-error");
         input.placeholder = validation.error;
       }
-      input.addEventListener("input", function () {
-        updateCell(state.activeSheet, rowIndex, colIndex, input.value);
-      });
+      if (!isTableMapping) {
+        input.addEventListener("input", function () {
+          updateCell(state.activeSheet, rowIndex, colIndex, input.value);
+        });
+      }
       const td = document.createElement("td");
       td.appendChild(input);
       tr.appendChild(td);
     });
     const actTd = document.createElement("td");
     actTd.className = "row-actions";
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "btn-delete-row";
-    delBtn.textContent = "\u00D7";
-    delBtn.title = "Delete row";
-    delBtn.addEventListener("click", function () {
-      deleteRow(state.activeSheet, rowIndex);
-    });
-    actTd.appendChild(delBtn);
+    // TableMapping 隱藏刪除按鈕
+    if (!isTableMapping) {
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "btn-delete-row";
+      delBtn.textContent = "\u00D7";
+      delBtn.title = "Delete row";
+      delBtn.addEventListener("click", function () {
+        deleteRow(state.activeSheet, rowIndex);
+      });
+      actTd.appendChild(delBtn);
+    }
     tr.appendChild(actTd);
     tbody.appendChild(tr);
   });
@@ -1951,6 +1929,11 @@ function bindEvents() {
       ? ev.target
       : (ev.target.closest && ev.target.closest("td") && ev.target.closest("td").querySelector("input[data-row][data-col]"));
     if (inp) {
+      // TableMapping 不允許編輯
+      if (state.activeSheet === "TableMapping") {
+        showStatus("TableMapping is system-defined and read-only.", "error");
+        return;
+      }
       clearCutState(); // 確定要開始編輯，視為放棄 cut 搬移
       var row = parseInt(inp.dataset.row, 10);
       var col = parseInt(inp.dataset.col, 10);
@@ -2006,12 +1989,28 @@ function bindEvents() {
       if (hasTextSelection) return; // 文字反白時讓瀏覽器原生剪下，不攔截
       if (k === "c") { e.preventDefault(); clearCutState(); doCopy(); return; }
       if (k === "x") {
+        // TableMapping 不允許剪下
+        if (state.activeSheet === "TableMapping") {
+          e.preventDefault();
+          showStatus("TableMapping is system-defined and read-only.", "error");
+          return;
+        }
         console.log("[keydown] Ctrl+X", { k: k, hasTextSelection: hasTextSelection, inTable: !!inTable });
         e.preventDefault();
         doCut();
         return;
       }
-      if (k === "v") { e.preventDefault(); doPaste(); return; }
+      if (k === "v") {
+        // TableMapping 不允許貼上
+        if (state.activeSheet === "TableMapping") {
+          e.preventDefault();
+          showStatus("TableMapping is system-defined and read-only.", "error");
+          return;
+        }
+        e.preventDefault();
+        doPaste();
+        return;
+      }
     }
 
     if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) {
@@ -2087,6 +2086,11 @@ function bindEvents() {
     }
     if (e.key === "F2" && !state.editMode) {
       e.preventDefault();
+      // TableMapping 不允許編輯
+      if (state.activeSheet === "TableMapping") {
+        showStatus("TableMapping is system-defined and read-only.", "error");
+        return;
+      }
       var inp = getActiveInput();
       if (inp) {
         state.editMode = true; // enterEditMode
@@ -2099,6 +2103,12 @@ function bindEvents() {
     }
     // Select 模式：可輸入字元→清空 active 並輸入首字元進 Edit；Delete/Backspace→清空所有選取格；此為「會改變內容」→ clear cut
     if (!state.editMode && (isPrintableKey(e) || e.key === "Backspace" || e.key === "Delete")) {
+      // TableMapping 不允許編輯
+      if (state.activeSheet === "TableMapping") {
+        e.preventDefault();
+        showStatus("TableMapping is system-defined and read-only.", "error");
+        return;
+      }
       e.preventDefault();
       clearCutStateIfEditingIntent(e);
       var inp = getActiveInput();

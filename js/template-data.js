@@ -2,6 +2,86 @@
  * Template Data - Single source of truth for sheet structure.
  * Sheet names must match original Excel EXACTLY (including typos, leading/trailing spaces).
  */
+
+// Period TableMapping 系統對照表（固定資料，不可修改）
+const TABLE_MAPPING_HEADERS = ["工作表名稱", "Table", "Table欄位名稱", "Excel 中文欄位名稱", "Excel 英文欄位名稱"];
+
+const TABLE_MAPPING_DATA = [
+  ["Exchange Rate", "ExExchangeRate", "BusinessUnitCurrency", "事業單位幣別", "Business Unit Currency"],
+  ["Exchange Rate", "ExExchangeRate", "CompanyCurrency", "公司幣別", "Company Currency"],
+  ["Exchange Rate", "ExExchangeRate", "ExchangeRate", "匯率值", "Exchange Rate"],
+  ["Resource", "ExResource", "BusinessUnitNo", "事業單位", "Business Unit"],
+  ["Resource", "ExResource", "ResourceNo", "資源代碼", "Resource Code"],
+  ["Resource", "ExResource", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+  ["Resource", "ExResource", "Amount", "金額", "Amount"],
+  ["Resource", "ExResource", "ValueObjectType", "價值標的類別", "Value Object Type"],
+  ["Resource", "ExResource", "ValueObjectNo", "價值標的代碼", "Value Object Code"],
+  ["Resource", "ExResource", "MachineGroupNo", "機台代碼", "Machine Code"],
+  ["Resource", "ExResource", "ProductNo", "產品代碼", "Product Code"],
+  ["Resource Driver(Actvity Center)", "ExResourceDriverAC", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+  ["Resource Driver(Value Object)", "ExResourceDriverValueObject", "BusinessUnitNo", "事業單位", "Business Unit"],
+  ["Resource Driver(Value Object)", "ExResourceDriverValueObject", "ValueObjectType", "價值標的類別", "Value Object Type"],
+  ["Resource Driver(Value Object)", "ExResourceDriverValueObject", "ValueObjectNo", "價值標的代碼", "Value Object Code"],
+  ["Resource Driver(Machine)", "ExResourceDriverMachine", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+  ["Resource Driver(Machine)", "ExResourceDriverMachine", "MachineGroupNo", "機台代碼", "Machine Code"],
+  ["Resource Driver(M. A. C.)", "ExResourceDriverManagementAC", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+  ["Resource Driver(M. A. C.)", "ExResourceDriverManagementAC", "MachineGroupNo", "機台代碼", "Machine Code"],
+  ["Resource Driver(S. A. C.)", "ExResourceDriverSupportingAC", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+  ["Resource Driver(S. A. C.)", "ExResourceDriverSupportingAC", "MachineGroupNo", "機台代碼", "Machine Code"],
+  ["Activity Center Driver(N. Cap.)", "ExACDriverNormalCapacity", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+  ["Activity Center Driver(N. Cap.)", "ExACDriverNormalCapacity", "MachineGroupNo  ", "機台代碼", "Machine Code"],
+  ["Activity Center Driver(N. Cap.)", "ExACDriverNormalCapacity", "ActivityNo  ", "作業代碼", "Activity Code"],
+  ["Activity Center Driver(N. Cap.)", "ExACDriverNormalCapacity", "NormalCapacityHours", "正常產能時間", "Normal Capacity Hours"],
+  ["Activity Center Driver(A. Cap.)", "ExACDriverActualCapacity", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+  ["Activity Center Driver(A. Cap.)", "ExACDriverActualCapacity", "MachineGroupNo  ", "機台代碼", "Machine Code"],
+  ["Activity Center Driver(A. Cap.)", "ExACDriverActualCapacity", "SupportedActivityCenterNo", "受援作業中心代碼", "Supported Activity Center Code"],
+  ["Activity Center Driver(A. Cap.)", "ExACDriverActualCapacity", "ActivityNo", "作業代碼", "Activity Code"],
+  ["Activity Center Driver(A. Cap.)", "ExACDriverActualCapacity", "ActualCapacityHours", "實際產能時間", "Actual Capacity Hours"],
+  ["Activity Center Driver(A. Cap.)", "ExACDriverActualCapacity", "ValueObjectNo", "價值標的代碼", "Value Object Code"],
+  ["Activity Center Driver(A. Cap.)", "ExACDriverActualCapacity", "ValueObjectType", "價值標的類別", "Value Object Type"],
+  ["Activity Center Driver(A. Cap.)", "ExACDriverActualCapacity", "ProductNo", "產品代碼", "Product Code"],
+  ["Activity Driver", "ExActivityDriver", "ActivityCenterNo", "作業中心代碼", "Activity Center Code"],
+  ["Activity Driver", "ExActivityDriver", "MachineGroupNo  ", "機台代碼", "Machine Code"],
+  ["Activity Driver", "ExActivityDriver", "ActivityNo  ", "作業代碼", "Activity Code"],
+  ["Activity Driver", "ExActivityDriver", "ActivityDriverNo", "作業動因", "Activity Driver"],
+  ["Activity Driver", "ExActivityDriver", "ActivityDriverValue", "作業動因值", "Activity Driver Value"],
+  ["Activity Driver", "ExActivityDriver", "ValueObjectNo", "價值標的代碼", "Value Object Code"],
+  ["Activity Driver", "ExActivityDriver", "ValueObjectType", "價值標的類別", "Value Object Type"],
+  ["Activity Driver", "ExActivityDriver", "ProductNo   ", "產品代碼", "Product Code"],
+  ["ProductProject Driver", "ExProductProjectDriver", "ProductNo", "產品代碼", "Product Code"],
+  ["ProductProject Driver", "ExProductProjectDriver", "ProjectDriverNo", "專案動因", "Project Driver"],
+  ["ProductProject Driver", "ExProductProjectDriver", "ProjectDriverValue", "專案動因值", "Project Driver Value"],
+  ["Manufacture Order", "ExManufactureOrder", "BusinessUnitNo", "事業單位", "Business Unit"],
+  ["Manufacture Order", "ExManufactureOrder", "MO", "製令", "MO"],
+  ["Manufacture Order", "ExManufactureOrder", "ProductNo", "產品", "Product Code"],
+  ["Manufacture Order", "ExManufactureOrder", "Quantity", "完工數量(PC)", "Quantity"],
+  ["Manufacture Order", "ExManufactureOrder", "Closed", "製令關閉", "Closed"],
+  ["Manufacture Material", "ExManufactureMaterial", "BusinessUnitNo", "事業單位", "Business Unit"],
+  ["Manufacture Material", "ExManufactureMaterial", "MO", "製令", "MO"],
+  ["Manufacture Material", "ExManufactureMaterial", "MaterialNo", "材料", "Material Code"],
+  ["Manufacture Material", "ExManufactureMaterial", "Quantity", "用料數量", "Quantity"],
+  ["Manufacture Material", "ExManufactureMaterial", "Amount", "購入金額", "Amount"],
+  ["Purchased Material and WIP", "ExPurchasedMaterialAndWIP", "BusinessUnitNo", "事業單位", "Business Unit"],
+  ["Purchased Material and WIP", "ExPurchasedMaterialAndWIP", "MaterialNo", "料號", "Material Code"],
+  ["Purchased Material and WIP", "ExPurchasedMaterialAndWIP", "Quantity", "本期數量", "Quantity"],
+  ["Purchased Material and WIP", "ExPurchasedMaterialAndWIP", "Amount", "本期總金額", "Amount"],
+  ["Purchased Material and WIP", "ExPurchasedMaterialAndWIP", "EndInventoryQty", "期末庫存數量", "End Inventory Qty"],
+  ["Purchased Material and WIP", "ExPurchasedMaterialAndWIP", "Unit", "單位", "Unit"],
+  ["Purchased Material and WIP", "ExPurchasedMaterialAndWIP", "EndInventoryAmount", "期末庫存金額", "End Inventory Amount"],
+  ["Expected Project Value", "ExExpectedProjectValue", "ProjectNo", "專案代碼", "Project Code"],
+  ["Expected Project Value", "ExExpectedProjectValue", "TotalProjectDriverValue", "預估專案動因總值", "Total Project Driver Value"],
+  ["Sales Revenue ", "ExSalesRevenue", "OrderNo", "訂單編號", "Order No"],
+  ["Sales Revenue ", "ExSalesRevenue", "CustomerNo", "顧客代碼", "Customer Code"],
+  ["Sales Revenue ", "ExSalesRevenue", "ProductNo", "產品代碼", "Product Code"],
+  ["Sales Revenue ", "ExSalesRevenue", "Quantity", "數量", "Quantity"],
+  ["Sales Revenue ", "ExSalesRevenue", "Amount", "收入金額", "Amount"],
+  ["Sales Revenue ", "ExSalesRevenue", "SalesActivityCenterNo", "銷售作業中心代碼", "Sales Activity Center Code"],
+  ["Sales Revenue ", "ExSalesRevenue", "ShipmentBusinessUnitNo", "出貨事業單位", "Shipment Business Unit"],
+  ["Service Driver", "ExServiceDriver", "BusinessUnitNo", "事業單位", "Business Unit"],
+  ["Service Driver", "ExServiceDriver", "CustomerNo", "顧客代碼", "Customer Code"],
+  ["Service Driver", "ExServiceDriver", "ProductNo", "產品代碼", "Product Code"],
+];
+
 const TEMPLATE_DATA = {
   workbooks: {
     ModelData: {
@@ -332,9 +412,9 @@ const TEMPLATE_DATA = {
     "TableMapping": {
       workbook: "PeriodData",
       hidden: true,
-      exportAsBlank: true,
-      headers: [],
-      data: []
+      exportAsBlank: false,
+      headers: TABLE_MAPPING_HEADERS,
+      data: TABLE_MAPPING_DATA
     },
 
     // ========================================
