@@ -1,103 +1,210 @@
-# 專案狀態 PROJECT_STATUS（自動產生）
-> 最後更新：2026-01-25
-> 產生者：Cursor（接手者模式）
+## 【Project Status - 2026-01-26】
 
-## 1) 這個 WebApp 是做什麼的（1~8 行）
-- **目標使用者：** 學生（教學情境，需輸入學號以區分資料）。
-- **使用情境：** Excel 教學用表單；在瀏覽器內像操作 Excel 一樣編輯兩本工作簿（Model Data、Period Data）底下的多張工作表，做資料填寫、練習、繳交。
-- **核心流程（從打開網頁到完成操作）：** 開啟頁面 → 輸入學號（或沿用 session 的學號）→ 選擇 Model Data / Period Data → 點分頁切換工作表 → 在表格中編輯、新增/刪除列、複製/剪下/貼上 → 可上傳 .xlsx 覆寫/合併、下載 .xlsx、或 Reset 還原 template；資料依學號存於 localStorage。
-- **主要輸入/輸出：** 輸入：學號（sessionStorage）、上傳 .xlsx；輸出：下載 .xlsx（檔名含學號與時間戳）、寫入 localStorage（key: `excelForm_v1_{學號}`，內容含 data、changeLog、activeGroup、activeSheet 等）。純前端，無後端、無 API、無資料庫；依賴 CDN 的 xlsx 函式庫。
+> 產出時間：2026-01-26  
+> 產出者：Cursor AI（自動掃描）
 
-## 2) 目前已完成的功能清單（只列「現在真的有」）
-- [x] 學號輸入 modal（Enter / Continue 寫入 sessionStorage，以 excelForm_v1_{學號} 讀寫 localStorage）— `js/app.js`: `showStudentIdModal`, `hideStudentIdModal`, `setStudentId`, `checkStudentId`
-- [x] Model Data / Period Data 切換（`state.activeGroup`，`renderAll`）— `js/app.js`: `bindEvents`（`.workbook-btn`）, `renderWorkbookToggle`
-- [x] 分組 sheet 導覽（`uiGroups`，點分頁切換 `activeSheet`，hidden 表不顯示）— `js/app.js`: `renderGroupedNav`; `js/template-data.js`: `TEMPLATE_DATA.workbooks[].uiGroups`
-- [x] 表格動態產生（`#tableHead`、`#tableBody`，`<td><input>`，`data-sheet`/`data-row`/`data-col`）— `js/app.js`: `renderTable`
-- [x] 必填驗證（`cell-error`、placeholder、`updateValidationSummary`「⚠️ N required field(s) need attention」）— `js/app.js`: `validateCell`, `updateValidation`, `updateValidationSummary`; `js/template-data.js`: `isRequired`
-- [x] 單格選取、拖曳框選、Shift+點範圍、Ctrl+點多選；`cell-active`、`cell-selected`、`cell-cut`、`cell-editing` — `js/app.js`: `#tableBody` mousedown、document mousemove/mouseup、`updateSelectionUI`, `setActiveCell`, `rectFromTwoPoints`, `getSelectedCells`
-- [x] Select / Edit 模式（Select 時 readonly、單擊不進編輯；雙擊、F2、直接打字進 Edit）— `js/app.js`: `#tableBody` dblclick、document keydown（F2、isPrintableKey）、`focusActiveCell`, `updateSelectionUI`
-- [x] 鍵盤：方向鍵、Enter、Tab 移動；Ctrl+A 全選；Ctrl+C/X/V 複製/剪下/貼上（TSV）；Esc；Delete/Backspace 清空選取格 — `js/app.js`: document keydown、`doCopy`, `doCut`, `doPaste`, `selectAll`, `clearCutState`, `clearCutStateIfEditingIntent`
-- [x] Cut 視覺與搬移（`cell-cut`，貼上成功且上次為 cut 時清空來源；切 sheet/workbook、Esc、輸入等 `clearCutState`）— `js/app.js`: `doCut`, `doPaste`, `clearCutState`, `clearCutStateIfEditingIntent`
-- [x] Undo / Redo（`beginAction`/`recordChange`/`commitAction`，Ctrl+Z、Ctrl+Shift+Z、Ctrl+Y）— `js/app.js`: `undo`, `redo`, `recordChange`, `beginAction`, `commitAction`; document keydown
-- [x] 新增列（+ Add Row）、刪除列（每列 ×）— `js/app.js`: `addRow`, `deleteRow`; `renderTable` 內 delete 鈕 click、`#btnAddRow` click
-- [x] 自動儲存（`updateCell` 後 debounce 500ms 寫 localStorage）— `js/app.js`: `autoSave`, `saveToStorage`
-- [x] 上傳 .xlsx（解析後依工作表名稱判斷 Model/Period，對應 sheet 覆寫到 `state.data`，ChangeLog 合併，`ensureAllSheets`、`saveToStorage`、`renderAll`）— `js/app.js`: `uploadBackup`, `detectWorkbook`; `#inputUpload` change
-- [x] 下載 .xlsx（依 `activeGroup` 組 xlsx，含 Hidden 規則、ChangeLog，檔名含學號與時間戳）— `js/app.js`: `downloadExcel`, `downloadWorkbook`; `#btnDownload` click
-- [x] Reset（確認 modal 後 `initFromTemplate`、`saveToStorage`、`renderAll`）— `js/app.js`: `resetData`; `#btnReset`, `#btnResetConfirm`, `#resetModal`
-- [x] Change 學號（清 sessionStorage，再開學號 modal，以新學號載入或初始化）— `js/app.js`: `#btnChangeStudent` click、`showStudentIdModal`
-- [x] Resource Driver(Actvity Center) 表頭 C 欄起可編輯（`th-input`，改動寫入 `state.data[].headers`、`autoSave`；不經 `updateCell`/ChangeLog）— `js/app.js`: `renderTable` 內 `isRDAC` 分支、`th-input` input
-- [ ] 一次下載「兩本」工作簿（Model + Period）— 待確認：目前 Download 只下載 `activeGroup` 對應的那一本
+---
 
-## 3) 專案結構與檔案責任分工（最重要）
-| 檔案 | 角色/責任 | 重要函式/物件 | 會影響哪些功能 | 風險/注意事項 |
-|---|---|---|---|---|
-| index.html | UI 骨架、載入 xlsx CDN、template-data.js、app.js；header、toolbar、#groupedNav、#tableHead/#tableBody、學號 modal、Reset modal | #app, #dataTable, #tableHead, #tableBody, #studentModal, #resetModal, #groupedNav, #btnAddRow, #inputUpload, #btnDownload, #btnReset | 全站 | script 順序不可亂改：xlsx → template-data.js → app.js；id/class 被 app.js、style.css 依賴 |
-| css/style.css | 全站樣式：:root 變數、按鈕、表格、input、.cell-active/.cell-selected/.cell-cut/.cell-editing/.cell-error、modal、分頁、狀態列 | .header, .toolbar, .workbook-btn, .nav-pill, .data-table, .modal-overlay, .status-bar | 全站 | 改 class 名須同步 app.js 與 index.html |
-| js/template-data.js | 表單結構單一來源：TEMPLATE_DATA（workbooks、sheets、sheetOrder）、getSheetsForWorkbook、getSheetConfig、isRequired、getExcelSheetName、getInternalSheetName、norm | TEMPLATE_DATA, getSheetConfig, isRequired, getExcelSheetName, getInternalSheetName, getSheetsForWorkbook | 分頁、表格欄位、驗證、上傳/下載、匯出 Hidden/檔名 | 被 app.js 與上傳/下載廣用；改 sheets/workbooks、get*、isRequired 會影響畫面與匯入匯出 |
-| js/app.js | 應用主邏輯：state、init、學號 modal、localStorage、renderAll/renderTable/renderGroupedNav、選取/編輯/剪貼、Undo/Redo、驗證、上傳/下載、Reset、addRow/deleteRow、bindEvents | state, init, checkStudentId, loadStudentData, bindEvents, renderAll, renderTable, updateCell, doCopy/doCut/doPaste, undo/redo, uploadBackup, downloadExcel, saveToStorage | 全站 | 高度耦合；state、getInputAt 依賴 data-sheet/row/col；改選取/編輯易牽動 updateSelectionUI、keydown、updateCell、renderTable |
-| _archive/legacy_grid_system/*.js | 舊架構（contentEditable、#gridHead/#gridBody），已歸檔；index.html 未載入 | — | 無（現行未使用） | 僅供查閱；現行開發勿改、勿載入 |
+### A. 專案在做什麼（以「現在」為主）
 
-## 4) 執行流程（從載入到可操作）
-- 瀏覽器載入 `index.html`，解析到 `<script>` 時依序載入：  
-  1) xlsx CDN（`xlsx.full.min.js`）→ 全域 `XLSX`；  
-  2) `js/template-data.js` → 全域 `TEMPLATE_DATA`、`getSheetsForWorkbook`、`getSheetConfig`、`isRequired`、`getExcelSheetName`、`getInternalSheetName`；  
-  3) `js/app.js` → 定義 `state`、各函式，最後若 `typeof XLSX !== "undefined"` 則直接 `init()`，否則等 `DOMContentLoaded` 再 `init()`。  
-- **Entry point：** `init()`（`js/app.js` 尾段）。  
-- `init()` 內：`checkStudentId()` → 有 `sessionStorage.studentId` 則 `setStudentId(id)` → `loadStudentData(trimmed)`、`hideStudentIdModal()`、更新 `#studentDisplay`；沒有則 `showStudentIdModal()`；最後 `bindEvents()`。  
-- `loadStudentData(studentId)`：用 `excelForm_v1_{學號}` 讀 `localStorage`；有則 `JSON.parse` 取出 `data`、`changeLog`、`activeGroup`、`activeSheet`，`ensureAllSheets()`，沒有則 `initFromTemplate()`；然後 `renderAll()`。  
-- `renderAll()` 順序：`renderWorkbookToggle()` → `renderGroupedNav()` → `renderTable()`。  
-- `bindEvents()` 在 `init()` 最後執行，只綁一次；之後表格由 `renderTable` 動態重建，`renderTable` 內對每個 `input` 綁 `input`、對 delete 鈕綁 `click`；`#tableBody` 的 `mousedown`、`dblclick` 與 `document` 的 `mousemove`、`mouseup`、`keydown` 在 `bindEvents` 綁定（事件委派到 `#tableBody` 或依 `activeCell` 處理）。
+- **核心用途：** 這是一個在瀏覽器中運行的表單編輯器，標題顯示為 "iPVMS Form"。使用者可以輸入公司名稱（程式碼中稱為 `studentId`），然後編輯兩種類型的資料：Model Data 和 Period Data。
 
-## 5) 資料模型與狀態來源
-- **in-memory 全域：** `state`（`studentId`, `activeGroup`, `activeSheet`, `data`, `changeLog`, `activeCell`, `selection`, `multiSelection`, `isSelecting`, `editMode`, `cutCells`, `lastClipboardOp`, `undoStack`, `redoStack`, `_tx`）；`_dragAnchor`、`saveTimeout`（`js/app.js`）。`TEMPLATE_DATA`、`getSheetsForWorkbook`、`getSheetConfig`、`isRequired`、`getExcelSheetName`、`getInternalSheetName`（`js/template-data.js`）。
-- **localStorage：** key 為 `excelForm_v1_{學號}`；存 `{ version, studentId, lastModified, activeGroup, activeSheet, data, changeLog }`。寫入：`saveToStorage()`（被 `autoSave` debounce 500ms 或 `loadStudentData` 分支、`uploadBackup`、`resetData` 後呼叫）；讀取：`loadStudentData`。
-- **sessionStorage：** key `studentId`；`setStudentId` 寫入、`checkStudentId` 讀取、`#btnChangeStudent` 點擊時 `removeItem`。
-- **上傳 Excel：** `#inputUpload` change → `uploadBackup(file)`：`FileReader` 讀檔 → `XLSX.read` → `detectWorkbook(uploadedSheets)` 判斷 Model/Period → 對每個 `excelSheetName` 用 `getInternalSheetName(excelSheetName, workbookKey)` 對回 internal 名，非 hidden 則覆寫 `state.data[internalName]`；若有 `ChangeLog` 工作表則合併進 `state.changeLog`；`ensureAllSheets`、`saveToStorage`、`renderAll`。
-- **下載 Excel：** `#btnDownload` click → `downloadExcel()` → `downloadWorkbook(workbookKey, timestamp)`：`XLSX.utils.book_new()`，依 `TEMPLATE_DATA.sheets` 與 `state.data`、`getExcelSheetName`、Hidden/exportAsBlank/exportUseTemplate 等規則組 ws，追加 ChangeLog 工作表，`XLSX.writeFile(wb, filename)`；檔名 `{filename}_{studentId}_{timestamp}.xlsx`。
-- **雲端 / 登入 / 權限：** 無。
+- **使用者在畫面上可以做的事情：**
+  - 輸入公司名稱（首次使用時會彈出 modal）
+  - 在 Model Data 和 Period Data 之間切換
+  - 在 Period Data 模式下，可以選擇或建立月份（Period Month，格式為 YYYY-MM）
+  - 透過分頁標籤切換不同的工作表（sheets）
+  - 在表格中輸入資料（每個儲存格是一個 `<input>` 元素）
+  - 選取儲存格（單選、拖曳框選、Shift+點選範圍、Ctrl+點選多選）
+  - 編輯儲存格（雙擊、F2、或直接打字）
+  - 複製/剪下/貼上（Ctrl+C/X/V，使用 TSV 格式）
+  - 新增列（+ Add Row 按鈕）
+  - 刪除列（每列右側的 × 按鈕）
+  - 上傳 .xlsx 檔案（覆寫或合併資料）
+  - 下載 .xlsx 檔案（檔名包含公司名稱和時間戳）
+  - 重置資料（Reset 按鈕，會顯示確認 modal）
 
-## 6) UI 組成（重要 DOM id/class，只列實際存在）
-- **表格容器：** `#dataTable`、`#tableHead`、`#tableBody`、`.table-wrapper`、`.data-table`
-- **分頁/工作表切換：** `#sheetTabsWrapper`、`#groupedNav`、`.grouped-nav`、`.nav-group-row`、`.nav-group-badge`、`.nav-pills`、`.nav-pill`（.active、.nav-pill-muted、.tab-dim）
-- **Toolbar：** `.toolbar`、`.workbook-toggle`、`.workbook-btn`（#btnModelData、#btnPeriodData、data-workbook）、`.toolbar-actions`；`#inputUpload`（accept .xlsx）、`#btnDownload`、`#btnReset`；`#btnAddRow`（.btn.btn-small）
-- **Header：** `.header`、`#studentDisplay`、`#btnChangeStudent`
-- **主內容：** `.main`、`.sheet-header`、`#sheetTitle`、`.validation-hint`、`#validationSummary`（.hidden）
-- **狀態列：** `.status-bar`、`#statusText`
-- **Modal：** `#studentModal`（.modal-overlay；無 .hidden 時顯示）、`#studentIdInput`、`#btnSetStudent`；`#resetModal`（.modal-overlay.hidden）、`#btnResetCancel`、`#btnResetConfirm`、`.modal`、`.modal-actions`
-- **儲存格 / 列：** `input` 具 `data-sheet`、`data-row`、`data-col`；`.row-num`、`.row-actions`、`.btn-delete-row`；`.cell-active`、`.cell-selected`、`.cell-cut`、`.cell-editing`、`.cell-error`；`th.required`、`.req-star`、`.th-input`（Resource Driver(Actvity Center) 表頭）
+- **它「像不像 Excel / 表單 / 教學工具 / 資料編輯器」：**
+  - 觀察到的行為：表格使用 `<table>` 結構，每個儲存格是 `<input>`，支援類似 Excel 的選取、編輯、複製貼上操作
+  - 有必填欄位驗證（紅色邊框、placeholder 提示）
+  - 有 ChangeLog 功能（記錄所有變更）
+  - 有 Undo/Redo 功能（Ctrl+Z、Ctrl+Shift+Z、Ctrl+Y）
+  - 資料儲存在瀏覽器的 localStorage（依公司名稱區分）
+  - 整體操作流程類似 Excel，但沒有公式、圖表等功能
 
-## 7) 表格互動（像 Excel 的行為）目前做到哪裡
-- **選取：**  
-  - 單選：`#tableBody` mousedown → 設 `activeCell`，`updateSelectionUI` 加 `cell-active`；`js/app.js`：mousedown handler。  
-  - 拖曳框選：mousedown 設 `_dragAnchor`、`isSelecting`，`document` mousemove 以 `getCellFromPoint`、`rectFromTwoPoints` 更新 `selection`，mouseup 結束；`updateSelectionUI` 對範圍加 `cell-selected`。  
-  - Shift+點：mousedown 時以 `selection` 起點或 `activeCell` 為錨、`rectFromTwoPoints(anchor, cell)` 設 `selection`。  
-  - Ctrl+點：mousedown 時切換 `multiSelection`，可多格；`updateSelectionUI` 對 `multiSelection` 加 `cell-selected`。  
-  - 全選：document keydown Ctrl+A → `selectAll()`，`selection` 覆蓋整表。  
-- **輸入：**  
-  - 單擊：Select 模式，`input` readonly，不進編輯。  
-  - 雙擊：`#tableBody` dblclick → `editMode=true`，`input` 去 readonly、focus、`setSelectionRange` 到尾；`updateSelectionUI` 加 `cell-editing`。  
-  - F2：keydown F2 且非 Edit → `editMode=true`，同上。  
-  - Select 下直接打字：keydown `isPrintableKey` → `clearCutStateIfEditingIntent`、`editMode=true`、`updateCell(..., e.key)`、`setSelectionRange(1,1)`。  
-  - Enter：Edit 下 keydown Enter → `updateCell` 寫回、`editMode=false`、`setActiveCell(r+1, c)`；Select 下 Enter → 僅下移。  
-  - Tab：keydown Tab → 右移，到最右欄則下一列、第 0 欄；逾最後列則回第 0 列；`setActiveCell(nr, nc)`。  
-- **複製/剪下/貼上：**  
-  - 複製：keydown Ctrl+C → `doCopy()`：`getSelectedCells` → `buildClipboardTextFromCells`（TSV，\t 欄、\n 列）→ `writeClipboardText`；`js/app.js`：`doCopy`, `buildClipboardTextFromCells`, `writeClipboardText`。  
-  - 剪下：Ctrl+X → `doCut()`：同上寫 TSV、設 `state.cutCells`、`lastClipboardOp='cut'`；`updateSelectionUI` 對 `cutCells.cells` 加 `cell-cut`。  
-  - 貼上：Ctrl+V → `doPaste()`：`readClipboardText` 讀 TSV，自 `activeCell` 填起，必要時 `push` 新列；若 `lastClipboardOp==='cut'` 且 `cutCells` 存在則清空剪下來源並 `clearCutState`。  
-- **刪除：** keydown Delete/Backspace（Select 下）→ `clearCutStateIfEditingIntent`、`beginAction('Clear')`、`getSelectedCells` 逐格 `updateCell(..., '')`、`commitAction`；`js/app.js`：document keydown。列刪除：`renderTable` 內每列 `.btn-delete-row` click → `deleteRow(sheet, rowIndex)`。
+---
 
-## 8) 已知問題 / 待辦（從程式碼與現況推得出來的）
-- **問題/限制：** Download 只下載 `activeGroup` 那一本，無法一次產出 Model+Period 兩檔；`#studentModal` 在 HTML 無 `hidden`，首屏會短暫顯示再依 `init`/`checkStudentId` 決定隱藏，可能有閃爍；`app.js` 內有 `console.log`（如 `[headers]`、`[keydown] Ctrl+X`、`[doPaste] error`），疑似除錯用；Resource Driver(Actvity Center) 表頭 `th-input` 編輯不經 `updateCell`/ChangeLog/Undo，與一般儲存格行為不一致。
-- **待辦：** 無從程式碼直接推得；若需「一次下載兩本」、表頭納入 ChangeLog/Undo、移除或管制 `console.log`，需另定規格。
-- **風險：** `app.js` 內 `DEFAULT_ROWS_MODEL_MAP`、`PERIOD_DIM_SHEETS`、`SYSTEM_EXPORT_SHEETS`、`nav-pill-muted` 的 sheet 名、`detectWorkbook` 的 system sheet 名均寫死，若 `template-data.js` 新增/更名 sheet 或改 `uiGroups`，易不同步；`state` 形狀被多處讀寫，增刪屬性需全局搜尋；`_archive/legacy_grid_system` 為舊架構，index.html 未載入，但若誤載入會與現行 `#tableHead`/`#tableBody` 架構衝突。
+### B. 目前的整體結構（高層）
 
-## 9) 接下來我（使用者）給你新需求時，你應該先問的 5 個問題
-1. 這個需求會動到「表格的選取/編輯/剪貼/Undo」嗎？若是，要一起檢查 `updateSelectionUI`、keydown、`updateCell`、`renderTable` 的互動，避免改一壞三。  
-2. 會改到 `template-data.js` 的 `sheets`、`workbooks`、`sheetOrder` 或 `get*`/`isRequired` 嗎？若是，上傳/下載、分頁、驗證都要一併確認。  
-3. 新功能需不需要新的 DOM id/class？若有，`index.html`、`app.js`、`style.css` 要一起改，且不能與現有 id 衝突。  
-4. 需求的「邊界」：例如貼上是否支援跨 sheet、Cut 要不要支援跨 workbook；Download 是否維持「只下載當前 workbook」；表頭編輯要不要進 ChangeLog/Undo。  
-5. `_archive/legacy_grid_system` 的檔案是否可以刪除或移動？還是必須保留作合規/稽核？
+- **是否為單頁應用：** 是。只有一個 `index.html` 檔案，所有功能都在這個頁面中完成。
 
-## 10) 待我回覆的問題清單（如果有）
-- Q1: Resource Driver(Actvity Center) 表頭（`th-input`）刻意不進 ChangeLog/Undo，還是之後要納入？
-- Q2: `DEFAULT_ROWS_MODEL_MAP`、`PERIOD_DIM_SHEETS`、`SYSTEM_EXPORT_SHEETS`、`nav-pill-muted` 的 sheet 名，之後若在 template-data 增刪/更名，是否有流程要同步更新 `app.js`，還是現階段手動即可？
+- **是否有 Model / Period / Workbook / Sheet 這類概念：**
+  - 有。程式碼中明確存在：
+    - `ModelData` 和 `PeriodData` 兩個 workbook（工作簿）
+    - 每個 workbook 下有多個 sheet（工作表）
+    - `state.activeGroup` 儲存當前 workbook（"ModelData" 或 "PeriodData"）
+    - `state.activeSheet` 儲存當前工作表名稱（例如 "Company"、"Exchange Rate"）
+    - `state.activePeriod` 儲存當前月份（Period Data 模式使用，格式 YYYY-MM）
+
+- **資料大致怎麼流動：**
+  - 初始化：`template-data.js` 定義所有工作表的結構（headers、data、required 欄位等）→ `app.js` 的 `initFromTemplate()` 建立初始資料 → 儲存到 `state.data`
+  - 載入：從 localStorage 讀取（key: `excelForm_v1_{公司名稱}`）→ 解析 JSON → 寫入 `state.data` → `renderTable()` 動態產生表格 HTML
+  - 編輯：使用者輸入 → `updateCell()` 更新 `state.data` → `autoSave()` debounce 500ms → `saveToStorage()` 寫入 localStorage
+  - 下載：從 `state.data` 讀取 → 使用 XLSX 函式庫組裝 Excel 檔案 → 下載
+  - 上傳：讀取 .xlsx 檔案 → 解析 → 覆寫 `state.data` → 儲存 → 重新渲染
+
+---
+
+### C. 檔案與職責對照表（非常重要）
+
+| 檔名 | 目前看起來負責的功能 | 分類（核心/輔助/歷史遺留） |
+|------|---------------------|---------------------------|
+| `index.html` | UI 骨架、載入外部資源（xlsx CDN、template-data.js、app.js）、定義所有 DOM 元素（header、toolbar、表格容器、modal 等） | 核心 |
+| `css/style.css` | 全站樣式定義（顏色變數、按鈕、表格、input、選取狀態、modal、分頁等） | 核心 |
+| `js/template-data.js` | 定義所有工作表的結構（TEMPLATE_DATA 物件，包含 workbooks、sheets、sheetOrder）、提供工具函式（getSheetConfig、isRequired、getExcelSheetName 等） | 核心 |
+| `js/app.js` | 應用主邏輯（state 管理、初始化、事件綁定、表格渲染、選取/編輯/剪貼、Undo/Redo、驗證、上傳/下載、localStorage 操作等） | 核心 |
+| `_archive/legacy_grid_system/selection_events.js` | 舊架構的選取事件處理（檔案內有 `console.log("✅ [selection_events.js] loaded")`） | 歷史遺留 |
+| `_archive/legacy_grid_system/table_core.js` | 舊架構的表格核心（檔案內有 `console.log("✅ [table_core.js] loaded")`） | 歷史遺留 |
+| `_archive/legacy_grid_system/table_render_core.js` | 舊架構的表格渲染核心（檔案內有 `console.log("✅ [table_render_core.js] loaded")`） | 歷史遺留 |
+| `.gitattributes` | Git 設定檔 | 輔助 |
+| `PROJECT_STATUS.md` | 專案狀態文件（本檔案） | 輔助 |
+
+⚠️ **觀察到的行為：**
+- `index.html` 中**沒有載入** `_archive/legacy_grid_system/` 下的任何檔案
+- `_archive/legacy_grid_system/` 下的檔案內容只有 console.log，沒有實際功能程式碼（或功能已被移除）
+- `app.js` 使用 `#tableHead` 和 `#tableBody` 作為表格容器，而舊檔案可能使用 `#gridHead` 和 `#gridBody`（從檔名推測）
+
+---
+
+### D. 已實作的功能（只列出確定存在的）
+
+- **表格動態產生：** `renderTable()` 函式會根據 `state.data[state.activeSheet]` 動態產生 `<thead>` 和 `<tbody>`，每個儲存格是 `<input>` 元素，具有 `data-sheet`、`data-row`、`data-col` 屬性
+
+- **選取功能：**
+  - 單選：點擊儲存格會設定 `state.activeCell`
+  - 拖曳框選：mousedown 後拖曳會設定 `state.selection`（矩形範圍）
+  - Shift+點選：會以當前選取起點或 activeCell 為錨點，擴展選取範圍
+  - Ctrl+點選：會切換 `state.multiSelection`（不連續多選）
+  - 全選：Ctrl+A 會選取整個表格
+
+- **輸入功能：**
+  - 單擊：Select 模式，input 為 readonly，不會進入編輯
+  - 雙擊：會進入 Edit 模式，input 移除 readonly 並 focus
+  - F2：在 Select 模式下按 F2 會進入 Edit 模式
+  - 直接打字：在 Select 模式下直接輸入字元會進入 Edit 模式並填入該字元
+  - Enter：在 Edit 模式下會儲存並下移，在 Select 模式下僅下移
+  - Tab：會右移，到最右欄則下一列第 0 欄
+  - Delete/Backspace：在 Select 模式下會清空所有選取的儲存格
+
+- **複製/剪下/貼上：**
+  - 複製（Ctrl+C）：會將選取的儲存格轉換為 TSV 格式（\t 分隔欄、\n 分隔列）並寫入剪貼簿
+  - 剪下（Ctrl+X）：同上，但會設定 `state.cutCells` 並顯示 `.cell-cut` 樣式
+  - 貼上（Ctrl+V）：會讀取剪貼簿內容，解析 TSV，從 `activeCell` 開始貼上，必要時會自動新增列；如果上次是 cut 操作，會清空來源儲存格
+
+- **新增/刪除列：**
+  - 新增列：`#btnAddRow` 按鈕會呼叫 `addRow()`，在 `state.data[state.activeSheet].data` 中 push 一個空陣列
+  - 刪除列：每列右側有 × 按鈕，會呼叫 `deleteRow()`，從 `state.data[state.activeSheet].data` 中移除該列
+
+- **必填驗證：**
+  - `validateCell()` 會檢查欄位是否必填（透過 `isRequired()` 函式）
+  - 必填欄位為空時會加上 `.cell-error` class 和 placeholder 提示
+  - `updateValidationSummary()` 會顯示錯誤總數
+
+- **自動儲存：**
+  - `updateCell()` 會呼叫 `autoSave()`，使用 `setTimeout` debounce 500ms 後呼叫 `saveToStorage()`
+  - `saveToStorage()` 會將 `state.data`、`state.changeLog` 等寫入 localStorage（key: `excelForm_v1_{公司名稱}`）
+
+- **上傳功能：**
+  - `#inputUpload` 接受 .xlsx 檔案
+  - `uploadBackup()` 會使用 XLSX 函式庫解析檔案
+  - `detectWorkbook()` 會根據工作表名稱判斷是 ModelData 還是 PeriodData
+  - 解析後會覆寫 `state.data` 對應的工作表資料
+  - 如果有 ChangeLog 工作表，會合併到 `state.changeLog`
+
+- **下載功能：**
+  - `#btnDownload` 會呼叫 `downloadExcel()`
+  - `downloadWorkbook()` 會根據 `state.activeGroup` 組裝對應的 workbook
+  - 會包含所有工作表、ChangeLog、以及 Hidden 規則
+  - 檔名格式：`{filename}_{公司名稱}_{時間戳}.xlsx`
+
+- **Undo/Redo：**
+  - `beginAction()`、`recordChange()`、`commitAction()` 會記錄變更到 `state.undoStack`
+  - Ctrl+Z 會呼叫 `undo()`，Ctrl+Shift+Z 或 Ctrl+Y 會呼叫 `redo()`
+
+- **Period 管理（Period Data 模式）：**
+  - 可以選擇月份（`#periodSelect`）
+  - 可以建立新月份（`#btnCreatePeriod`）
+  - 每個月份的資料會分別儲存在 localStorage 的 `periods` 物件中
+
+- **特殊工作表功能：**
+  - `Resource Driver(Actvity Center)` 的表頭（第 3 欄起）可以編輯（使用 `.th-input`）
+  - `Resource Driver(M. A. C.)` 和 `Resource Driver(S. A. C.)` 有 3 行表頭（headers、headers2、headers3）
+  - `TableMapping` 工作表是唯讀的（系統對照表）
+
+---
+
+### E. 明顯的限制與設計原則（如果能從 code 看出）
+
+- **避免模組化：** 所有邏輯都集中在 `app.js`（2648 行），沒有使用 ES6 modules 或任何模組系統
+
+- **避免 framework：** 沒有使用 React、Vue、Angular 等框架，純原生 JavaScript
+
+- **單一 HTML 檔案：** 只有一個 `index.html`，沒有路由或多頁面
+
+- **localStorage 為唯一儲存：** 沒有後端、沒有 API、沒有資料庫，所有資料都存在瀏覽器的 localStorage
+
+- **依賴 CDN：** XLSX 函式庫從 CDN 載入（`https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js`）
+
+- **硬編碼的 sheet 名稱：** `app.js` 中有多處硬編碼的 sheet 名稱（例如 `DEFAULT_ROWS_MODEL_MAP`、`PERIOD_DIM_SHEETS`、`SYSTEM_EXPORT_SHEETS`），如果 `template-data.js` 中新增或更名 sheet，這些地方可能不會自動更新
+
+- **UI 表格為單一真實來源：** 註解中明確寫道「UI table data = Source of Truth. Download rebuilds from headers + data arrays.」
+
+---
+
+### F. 新接手者「在改 code 前一定要知道的事」
+
+- **不要亂動的檔案：**
+  - `_archive/legacy_grid_system/` 下的檔案：雖然沒有被載入，但可能保留作歷史記錄或合規用途
+  - `template-data.js` 的 `TEMPLATE_DATA` 結構：被 `app.js` 廣泛使用，改動會影響整個系統
+
+- **核心假設：**
+  - `state.data` 的結構：`state.data[sheetName] = { headers: [], data: [] }`
+  - 表格的 DOM 結構：`#tableHead` 和 `#tableBody`，每個儲存格是 `<input>` 並有 `data-sheet`、`data-row`、`data-col` 屬性
+  - localStorage 的 key 格式：`excelForm_v1_{公司名稱}`
+  - Period Data 的資料結構：`periods[YYYY-MM] = { data: {}, changeLog: [], activeSheet: "" }`
+
+- **改錯會整個壞掉的地方：**
+  - `state` 物件的結構：被多處讀寫，增刪屬性需要全局搜尋
+  - `getInputAt()` 函式依賴 `data-sheet`、`data-row`、`data-col` 屬性，如果改動表格 DOM 結構會失效
+  - `renderTable()` 會清空並重建整個表格，如果改動 DOM 結構或事件綁定方式，選取/編輯功能可能失效
+  - `updateCell()` 是資料更新的唯一入口，如果改動會影響自動儲存、ChangeLog、Undo/Redo
+  - `template-data.js` 的 `getSheetConfig()`、`isRequired()` 等函式被廣泛使用，改動會影響驗證、上傳/下載
+
+- **script 載入順序很重要：** `index.html` 中的 script 順序必須是：xlsx CDN → template-data.js → app.js
+
+---
+
+### G. 不確定或需要向原作者確認的問題（列清單）
+
+⚠️ **這一段非常重要**  
+以下問題無法從 code 確定，需要向原作者確認：
+
+1. **`_archive/legacy_grid_system/` 下的檔案是否可以刪除？** 還是必須保留作合規/稽核用途？
+
+2. **`Resource Driver(Actvity Center)` 表頭編輯不進 ChangeLog/Undo 是刻意的嗎？** 還是之後要納入？
+
+3. **`DEFAULT_ROWS_MODEL_MAP`、`PERIOD_DIM_SHEETS`、`SYSTEM_EXPORT_SHEETS`、`nav-pill-muted` 的 sheet 名稱是寫死的，** 如果之後在 `template-data.js` 中新增或更名 sheet，是否有流程要同步更新 `app.js`，還是現階段手動即可？
+
+4. **Download 功能是否只下載當前 workbook？** 還是之後需要支援一次下載 Model+Period 兩本？
+
+5. **`app.js` 中有多處 `console.log`（例如 `[headers]`、`[keydown] Ctrl+X`、`[doPaste] error`），** 這些是除錯用的嗎？是否需要移除或管制？
+
+6. **`#studentModal` 在 HTML 中沒有 `hidden` class，** 首屏可能會短暫顯示再隱藏，這是刻意的嗎？還是需要加上初始 `hidden` class？
+
+7. **Period Data 模式下，如果切換月份時沒有選擇月份，** 系統會如何處理？從 code 看會初始化，但這是否符合預期？
+
+8. **`TableMapping` 工作表是系統對照表，** 是否永遠不允許使用者修改？還是之後會開放部分欄位？
+
+9. **`Resource Driver(Actvity Center)` 可以動態新增/刪除欄位（Driver Code），** 這個功能是否也適用於其他工作表？還是只有這個工作表有這個功能？
+
+10. **`migrateMACHeaderNames()`、`migrateSACHeaderNames()` 等遷移函式，** 這些是為了向下相容舊資料嗎？之後是否還需要這些函式？
