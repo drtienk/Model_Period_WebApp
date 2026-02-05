@@ -916,10 +916,21 @@ function undo() {
       if (cfg && cfg.workbook) state.activeGroup = cfg.workbook;
       renderAll();
     }
-    updateCell(ch.sheet, ch.row, ch.col, ch.oldValue, { skipLog: true, skipUndo: true });
-    last = ch;
+    if (ch.type === "insert_col") {
+      removeColumn(ch.sheet, ch.colIndex);
+      last = { row: 0, col: Math.min(ch.colIndex, (state.data[ch.sheet] && state.data[ch.sheet].headers ? state.data[ch.sheet].headers.length - 1 : 0)) };
+    } else if (ch.type === "rename_col") {
+      var s = state.data[ch.sheet];
+      if (s && s.headers) s.headers[ch.colIndex] = ch.oldName;
+      last = { row: 0, col: ch.colIndex };
+    } else {
+      updateCell(ch.sheet, ch.row, ch.col, ch.oldValue, { skipLog: true, skipUndo: true });
+      last = ch;
+    }
   }
-  state.activeCell = { row: last.row, col: last.col };
+  autoSave();
+  renderTable();
+  if (last && last.row != null && last.col != null) state.activeCell = { row: last.row, col: last.col };
   state.selection = null;
   state.multiSelection = [];
   updateSelectionUI();
@@ -939,10 +950,21 @@ function redo() {
       if (cfg && cfg.workbook) state.activeGroup = cfg.workbook;
       renderAll();
     }
-    updateCell(ch.sheet, ch.row, ch.col, ch.newValue, { skipLog: true, skipUndo: true });
-    last = ch;
+    if (ch.type === "insert_col") {
+      insertColumnAt(ch.sheet, ch.colIndex, ch.insertedHeaderName);
+      last = { row: 0, col: ch.colIndex };
+    } else if (ch.type === "rename_col") {
+      var s = state.data[ch.sheet];
+      if (s && s.headers) s.headers[ch.colIndex] = ch.newName;
+      last = { row: 0, col: ch.colIndex };
+    } else {
+      updateCell(ch.sheet, ch.row, ch.col, ch.newValue, { skipLog: true, skipUndo: true });
+      last = ch;
+    }
   }
-  state.activeCell = { row: last.row, col: last.col };
+  autoSave();
+  renderTable();
+  if (last && last.row != null && last.col != null) state.activeCell = { row: last.row, col: last.col };
   state.selection = null;
   state.multiSelection = [];
   updateSelectionUI();
@@ -1763,6 +1785,11 @@ function renderTable() {
           var s = state.data[state.activeSheet];
           if (s && s.headers) { s.headers[colIndex] = inp.value; autoSave(); }
         });
+        if (state.activeGroup === "PeriodData") {
+          var headerFocusValue;
+          inp.addEventListener("focus", function () { headerFocusValue = inp.value; });
+          inp.addEventListener("blur", function () { if (inp.value !== headerFocusValue) renameColumn(state.activeSheet, colIndex, inp.value); });
+        }
         if (colIndex === 3) {
           const wrap = document.createElement("span");
           wrap.className = "th-dc2-wrap";
@@ -1799,6 +1826,9 @@ function renderTable() {
       } else {
         th.textContent = (h != null) ? String(h) : "";
       }
+      if (state.activeGroup === "PeriodData") {
+        th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, colIndex); });
+      }
       tr.appendChild(th);
     });
     tr.appendChild(createCell("th", "row-actions", ""));
@@ -1820,6 +1850,7 @@ function renderTable() {
       th.setAttribute("rowspan", "3");
       th.textContent = (headers[c] != null) ? String(headers[c]) : "";
       if (isRequired(state.activeSheet, headers[c])) th.classList.add("required");
+      if (state.activeGroup === "PeriodData") (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
       tr1.appendChild(th);
     }
     for (var c = 3; c < headers.length; c++) {
@@ -1835,6 +1866,11 @@ function renderTable() {
           if (s && s.headers) { s.headers[idx] = inp.value; autoSave(); }
         };
       }(c));
+      if (state.activeGroup === "PeriodData") {
+        var headerFocusVal;
+        inp.addEventListener("focus", function () { headerFocusVal = inp.value; });
+        inp.addEventListener("blur", function () { if (inp.value !== headerFocusVal) renameColumn(state.activeSheet, c, inp.value); });
+      }
       if (c === 3) {
         var wrap = document.createElement("span");
         wrap.className = "th-dc2-wrap";
@@ -1863,6 +1899,7 @@ function renderTable() {
       } else {
         th.appendChild(inp);
       }
+      if (state.activeGroup === "PeriodData") (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
       tr1.appendChild(th);
     }
     var thAct = document.createElement("th");
@@ -1926,6 +1963,7 @@ function renderTable() {
       th.setAttribute("rowspan", "3");
       th.textContent = (headers[c] != null) ? String(headers[c]) : "";
       if (isRequired(state.activeSheet, headers[c])) th.classList.add("required");
+      if (state.activeGroup === "PeriodData") (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
       tr1.appendChild(th);
     }
     for (var c = 3; c < headers.length; c++) {
@@ -1941,6 +1979,11 @@ function renderTable() {
           if (s && s.headers) { s.headers[idx] = inp.value; autoSave(); }
         };
       }(c));
+      if (state.activeGroup === "PeriodData") {
+        var headerFocusValSAC;
+        inp.addEventListener("focus", function () { headerFocusValSAC = inp.value; });
+        inp.addEventListener("blur", function () { if (inp.value !== headerFocusValSAC) renameColumn(state.activeSheet, c, inp.value); });
+      }
       if (c === 3) {
         var wrap = document.createElement("span");
         wrap.className = "th-dc2-wrap";
@@ -1969,6 +2012,7 @@ function renderTable() {
       } else {
         th.appendChild(inp);
       }
+      if (state.activeGroup === "PeriodData") (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
       tr1.appendChild(th);
     }
     var thAct = document.createElement("th");
@@ -2015,14 +2059,48 @@ function renderTable() {
     }
     thead.appendChild(tr3);
   } else {
-    let thHtml = "<tr><th class=\"row-num\">#</th>";
-    headers.forEach(function (h) {
-      const req = isRequired(state.activeSheet, h);
-      const showStar = (state.activeGroup === "ModelData" && (state.activeSheet === "Company" || state.activeSheet === "Company Resource") && req);
-      thHtml += "<th" + (req ? " class=\"required\"" : "") + ">" + escapeHtml(h) + (showStar ? "<span class=\"req-star\">*</span>" : "") + "</th>";
+    thead.innerHTML = "";
+    var tr = document.createElement("tr");
+    tr.appendChild(createCell("th", "row-num", "#"));
+    var isPeriodDataHeader = (state.activeGroup === "PeriodData" && !isTableMapping);
+    headers.forEach(function (h, colIndex) {
+      var req = isRequired(state.activeSheet, h);
+      var showStar = (state.activeGroup === "ModelData" && (state.activeSheet === "Company" || state.activeSheet === "Company Resource") && req);
+      var th = document.createElement("th");
+      if (req) th.classList.add("required");
+      th.setAttribute("data-col", String(colIndex));
+      var wrap = document.createElement("span");
+      wrap.className = "th-header-wrap";
+      wrap.textContent = (h != null) ? String(h) : "";
+      if (showStar) {
+        var star = document.createElement("span");
+        star.className = "req-star";
+        star.textContent = "*";
+        wrap.appendChild(star);
+      }
+      th.appendChild(wrap);
+      if (isPeriodDataHeader) {
+        var btnIns = document.createElement("button");
+        btnIns.type = "button";
+        btnIns.className = "btn-insert-col";
+        btnIns.textContent = "+";
+        btnIns.title = "Insert column right";
+        btnIns.addEventListener("click", function (e) { e.stopPropagation(); insertColumnRight(state.activeSheet, colIndex); });
+        th.classList.add("th-has-insert");
+        th.appendChild(btnIns);
+        th.addEventListener("contextmenu", function (e) {
+          e.preventDefault();
+          insertColumnRight(state.activeSheet, colIndex);
+        });
+        th.addEventListener("dblclick", function () {
+          var newName = prompt("Rename column:", (sheet.headers[colIndex] != null) ? String(sheet.headers[colIndex]) : "");
+          if (newName !== null) renameColumn(state.activeSheet, colIndex, newName);
+        });
+      }
+      tr.appendChild(th);
     });
-    thHtml += "<th class=\"row-actions\"></th></tr>";
-    thead.innerHTML = thHtml;
+    tr.appendChild(createCell("th", "row-actions", ""));
+    thead.appendChild(tr);
   }
 
   tbody.innerHTML = "";
@@ -2223,6 +2301,123 @@ function deleteDriverCodeColumnSAC(colIndex) {
   }
   renderTable();
   autoSave();
+}
+
+// --- Insert column right / Rename column (PeriodData only) ---
+function makeUniqueHeaderName(headers, desired, excludeColIndex) {
+  var base = (desired != null && String(desired).trim() !== "") ? String(desired).trim() : "New Column";
+  var set = {};
+  headers.forEach(function (h, i) {
+    if (excludeColIndex === i) return;
+    set[String(h || "").trim()] = true;
+  });
+  if (!set[base]) return base;
+  if (base.length === 1 && base.match(/^[A-Z]$/i)) {
+    for (var n = 2; n <= 1000; n++) {
+      var cand = base + n;
+      if (!set[cand]) return cand;
+    }
+  }
+  for (var n = 2; n <= 1000; n++) {
+    var cand = base + " " + n;
+    if (!set[cand]) return cand;
+  }
+  return base + " " + Date.now();
+}
+
+function insertColumnAt(sheetName, colIndex, headerName) {
+  var sheet = state.data[sheetName];
+  if (!sheet || !sheet.headers) return;
+  sheet.headers.splice(colIndex, 0, headerName);
+  if (sheet.headers2) sheet.headers2.splice(colIndex, 0, "");
+  if (sheet.headers3) sheet.headers3.splice(colIndex, 0, "");
+  for (var i = 0; i < (sheet.data || []).length; i++) {
+    sheet.data[i].splice(colIndex, 0, "");
+  }
+}
+
+function removeColumn(sheetName, colIndex) {
+  var sheet = state.data[sheetName];
+  if (!sheet || !sheet.headers) return;
+  sheet.headers.splice(colIndex, 1);
+  if (sheet.headers2) sheet.headers2.splice(colIndex, 1);
+  if (sheet.headers3) sheet.headers3.splice(colIndex, 1);
+  for (var i = 0; i < (sheet.data || []).length; i++) {
+    sheet.data[i].splice(colIndex, 1);
+  }
+}
+
+function insertColumnRight(sheetName, colIndex) {
+  if (state.activeGroup !== "PeriodData" || sheetName === "TableMapping") return;
+  var sheet = state.data[sheetName];
+  if (!sheet || !sheet.headers) return;
+  var base = (sheet.headers[colIndex] != null) ? String(sheet.headers[colIndex]).trim() : "";
+  var newName = makeUniqueHeaderName(sheet.headers, base || null);
+  var insertAt = colIndex + 1;
+  beginAction("Insert column");
+  recordChangeSpecial({ type: "insert_col", sheet: sheetName, colIndex: insertAt, insertedHeaderName: newName });
+  insertColumnAt(sheetName, insertAt, newName);
+  commitAction();
+  state.changeLog.push({
+    timestamp: new Date().toISOString(),
+    sheet: getExcelSheetName(sheetName),
+    row: "",
+    column: newName,
+    oldValue: "",
+    newValue: "[Column inserted]"
+  });
+  autoSave();
+  var saved = { active: state.activeCell, sel: state.selection };
+  renderTable();
+  if (saved.active) {
+    if (saved.active.col > colIndex) state.activeCell = { row: saved.active.row, col: saved.active.col + 1 };
+    else if (saved.active.col === colIndex) state.activeCell = { row: saved.active.row, col: insertAt };
+    else state.activeCell = { row: saved.active.row, col: saved.active.col };
+  } else if (sheet.data.length) {
+    state.activeCell = { row: 0, col: insertAt };
+  }
+  state.selection = null;
+  state.multiSelection = [];
+  updateSelectionUI();
+  focusActiveCell();
+}
+
+function renameColumn(sheetName, colIndex, newName, opts) {
+  opts = opts || {};
+  var sheet = state.data[sheetName];
+  if (!sheet || !sheet.headers) return;
+  var oldName = (sheet.headers[colIndex] != null) ? String(sheet.headers[colIndex]) : "";
+  var trimmed = String(newName).trim();
+  if (trimmed === oldName) return;
+  trimmed = makeUniqueHeaderName(sheet.headers, trimmed, colIndex);
+  if (!opts.skipUndo) {
+    beginAction("Rename column");
+    recordChangeSpecial({ type: "rename_col", sheet: sheetName, colIndex: colIndex, oldName: oldName, newName: trimmed });
+    commitAction();
+  }
+  sheet.headers[colIndex] = trimmed;
+  if (!opts.skipLog) {
+    state.changeLog.push({
+      timestamp: new Date().toISOString(),
+      sheet: getExcelSheetName(sheetName),
+      row: "",
+      column: trimmed,
+      oldValue: oldName,
+      newValue: trimmed
+    });
+  }
+  autoSave();
+  renderTable();
+  updateSelectionUI();
+}
+
+function recordChangeSpecial(changeObj) {
+  if (state._tx) {
+    state._tx.changes.push(changeObj);
+  } else {
+    state.undoStack.push({ id: Date.now(), label: changeObj.type === "insert_col" ? "Insert column" : "Rename column", changes: [changeObj] });
+    clearRedo();
+  }
 }
 
 function addRow() {

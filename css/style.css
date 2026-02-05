@@ -501,6 +501,43 @@ body {
   vertical-align: middle;
 }
 
+/* Period Data: insert column right (header) */
+.data-table th.th-has-insert {
+  position: relative;
+  white-space: nowrap;
+}
+.data-table th.th-has-insert .th-header-wrap {
+  margin-right: 4px;
+}
+.data-table th.th-has-insert .btn-insert-col {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1;
+  color: var(--color-text-muted);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  vertical-align: middle;
+  opacity: 0.6;
+}
+.data-table th.th-has-insert:hover .btn-insert-col {
+  opacity: 1;
+  background: #f0fdf4;
+  border-color: var(--color-period);
+  color: var(--color-period);
+}
+.data-table th.th-has-insert .btn-insert-col:hover {
+  opacity: 1;
+  background: #d1fae5;
+}
+
 .btn-delete-column:hover {
   background: #f8d7da;
   border-color: #dc3545;
