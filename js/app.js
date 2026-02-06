@@ -2502,21 +2502,59 @@ function renderTable() {
     var tr = document.createElement("tr");
     tr.appendChild(createCell("th", "row-num", "#"));
     var isPeriodDataHeader = (state.activeGroup === "PeriodData" && !isTableMapping);
+    // Service Driver special case: allow renaming only the rightmost two columns (Column4 and Column5)
+    var isServiceDriver = (state.activeSheet === "Service Driver_Period" && state.activeGroup === "PeriodData");
+    var lastTwoColIndices = isServiceDriver ? [headers.length - 2, headers.length - 1] : [];
     headers.forEach(function (h, colIndex) {
       var req = isRequired(state.activeSheet, h);
       var th = document.createElement("th");
       if (req) th.classList.add("required");
       th.setAttribute("data-col", String(colIndex));
-      var wrap = document.createElement("span");
-      wrap.className = "th-header-wrap";
-      wrap.textContent = (h != null) ? String(h) : "";
-      if (req) {
-        var star = document.createElement("span");
-        star.className = "req-star";
-        star.textContent = "*";
-        wrap.appendChild(star);
+      
+      // Service Driver: render last two columns as editable inputs
+      if (isServiceDriver && lastTwoColIndices.indexOf(colIndex) !== -1) {
+        var inp = document.createElement("input");
+        inp.className = "th-input";
+        inp.type = "text";
+        inp.value = (h != null) ? String(h) : "";
+        var headerFocusValue;
+        inp.addEventListener("focus", function () { headerFocusValue = inp.value; });
+        inp.addEventListener("blur", function () {
+          var newValue = inp.value.trim();
+          if (newValue !== headerFocusValue) {
+            // Ensure uniqueness
+            var uniqueName = makeUniqueHeaderName(sheet.headers, newValue, colIndex);
+            sheet.headers[colIndex] = uniqueName;
+            autoSave();
+            renderTable(); // Re-render to show updated header name
+          }
+        });
+        inp.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            inp.blur();
+          }
+        });
+        th.appendChild(inp);
+        if (req) {
+          var star = document.createElement("span");
+          star.className = "req-star";
+          star.textContent = "*";
+          th.appendChild(star);
+        }
+      } else {
+        // Normal header rendering for other columns
+        var wrap = document.createElement("span");
+        wrap.className = "th-header-wrap";
+        wrap.textContent = (h != null) ? String(h) : "";
+        if (req) {
+          var star = document.createElement("span");
+          star.className = "req-star";
+          star.textContent = "*";
+          wrap.appendChild(star);
+        }
+        th.appendChild(wrap);
       }
-      th.appendChild(wrap);
+      
       if (isPeriodDataHeader) {
         var btnIns = document.createElement("button");
         btnIns.type = "button";
