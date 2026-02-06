@@ -225,7 +225,7 @@ body {
 
 .nav-group-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   margin-bottom: 10px;
   flex-shrink: 0;
@@ -251,12 +251,11 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  overflow-x: auto;
-  flex-wrap: nowrap;
-  white-space: nowrap;
+  overflow-x: visible;
+  flex-wrap: wrap;
+  white-space: normal;
   padding-bottom: 4px;
   min-width: 0;
-  scroll-behavior: smooth;
 }
 
 .nav-pills::-webkit-scrollbar {
