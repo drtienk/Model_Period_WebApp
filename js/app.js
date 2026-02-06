@@ -919,6 +919,17 @@ function undo() {
     if (ch.type === "insert_col") {
       removeColumn(ch.sheet, ch.colIndex);
       last = { row: 0, col: Math.min(ch.colIndex, (state.data[ch.sheet] && state.data[ch.sheet].headers ? state.data[ch.sheet].headers.length - 1 : 0)) };
+    } else if (ch.type === "delete_col") {
+      var s = state.data[ch.sheet];
+      insertColumnAt(ch.sheet, ch.colIndex, ch.deletedHeaderName);
+      if (s) {
+        if (s.headers2) s.headers2[ch.colIndex] = ch.deletedHeader2 || "";
+        if (s.headers3) s.headers3[ch.colIndex] = ch.deletedHeader3 || "";
+        for (var vi = 0; vi < (ch.deletedValues || []).length && vi < (s.data || []).length; vi++) s.data[vi][ch.colIndex] = ch.deletedValues[vi];
+        ensureUserAddedColIds(s);
+        if (s.userAddedColIds && ch.userAddedId) s.userAddedColIds[ch.colIndex] = ch.userAddedId;
+      }
+      last = { row: 0, col: ch.colIndex };
     } else if (ch.type === "rename_col") {
       var s = state.data[ch.sheet];
       if (s && s.headers) s.headers[ch.colIndex] = ch.oldName;
@@ -952,7 +963,12 @@ function redo() {
     }
     if (ch.type === "insert_col") {
       insertColumnAt(ch.sheet, ch.colIndex, ch.insertedHeaderName);
+      var s = state.data[ch.sheet];
+      if (s && ch.userAddedId) { ensureUserAddedColIds(s); s.userAddedColIds[ch.colIndex] = ch.userAddedId; }
       last = { row: 0, col: ch.colIndex };
+    } else if (ch.type === "delete_col") {
+      removeColumn(ch.sheet, ch.colIndex);
+      last = { row: 0, col: Math.min(ch.colIndex, (state.data[ch.sheet] && state.data[ch.sheet].headers ? state.data[ch.sheet].headers.length - 1 : 0)) };
     } else if (ch.type === "rename_col") {
       var s = state.data[ch.sheet];
       if (s && s.headers) s.headers[ch.colIndex] = ch.newName;
@@ -1786,9 +1802,11 @@ function renderTable() {
           if (s && s.headers) { s.headers[colIndex] = inp.value; autoSave(); }
         });
         if (state.activeGroup === "PeriodData") {
-          var headerFocusValue;
-          inp.addEventListener("focus", function () { headerFocusValue = inp.value; });
-          inp.addEventListener("blur", function () { if (inp.value !== headerFocusValue) renameColumn(state.activeSheet, colIndex, inp.value); });
+          if (isUserAddedColumn(state.activeSheet, colIndex)) {
+            var headerFocusValue;
+            inp.addEventListener("focus", function () { headerFocusValue = inp.value; });
+            inp.addEventListener("blur", function () { if (inp.value !== headerFocusValue) renameColumn(state.activeSheet, colIndex, inp.value); });
+          }
         }
         if (colIndex === 3) {
           const wrap = document.createElement("span");
@@ -1805,7 +1823,7 @@ function renderTable() {
           });
           wrap.appendChild(btn);
           th.appendChild(wrap);
-        } else if (colIndex >= 4) {
+        } else if (isUserAddedColumn(state.activeSheet, colIndex)) {
           const wrap = document.createElement("span");
           wrap.className = "th-dc2-wrap";
           wrap.appendChild(inp);
@@ -1813,10 +1831,10 @@ function renderTable() {
           btn.type = "button";
           btn.className = "btn-delete-column";
           btn.textContent = "\u00D7";
-          btn.title = "Delete Driver Code column";
+          btn.title = "Delete column";
           btn.addEventListener("click", function (e) {
             e.stopPropagation();
-            deleteDriverCodeColumn(colIndex);
+            deleteUserColumn(state.activeSheet, colIndex);
           });
           wrap.appendChild(btn);
           th.appendChild(wrap);
@@ -1866,7 +1884,7 @@ function renderTable() {
           if (s && s.headers) { s.headers[idx] = inp.value; autoSave(); }
         };
       }(c));
-      if (state.activeGroup === "PeriodData") {
+      if (state.activeGroup === "PeriodData" && isUserAddedColumn(state.activeSheet, c)) {
         var headerFocusVal;
         inp.addEventListener("focus", function () { headerFocusVal = inp.value; });
         inp.addEventListener("blur", function () { if (inp.value !== headerFocusVal) renameColumn(state.activeSheet, c, inp.value); });
@@ -1883,8 +1901,7 @@ function renderTable() {
         btnAdd.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); addDriverCodeColumnMAC(); });
         wrap.appendChild(btnAdd);
         th.appendChild(wrap);
-      } else if (canDeleteMacColumn(c)) {
-        // MAC column delete X: 新增欄位 (col>=4) 表頭顯示 X
+      } else if (isUserAddedColumn(state.activeSheet, c)) {
         var wrap = document.createElement("span");
         wrap.className = "th-dc2-wrap";
         wrap.appendChild(inp);
@@ -1892,8 +1909,8 @@ function renderTable() {
         btnDel.type = "button";
         btnDel.className = "btn-delete-column";
         btnDel.textContent = "\u00D7";
-        btnDel.title = "Delete Driver column";
-        btnDel.addEventListener("click", (function (col) { return function (e) { e.stopPropagation(); e.preventDefault(); deleteDriverCodeColumnMAC(col); }; })(c));
+        btnDel.title = "Delete column";
+        btnDel.addEventListener("click", (function (col) { return function (e) { e.stopPropagation(); e.preventDefault(); deleteUserColumn(state.activeSheet, col); }; })(c));
         wrap.appendChild(btnDel);
         th.appendChild(wrap);
       } else {
@@ -1979,7 +1996,7 @@ function renderTable() {
           if (s && s.headers) { s.headers[idx] = inp.value; autoSave(); }
         };
       }(c));
-      if (state.activeGroup === "PeriodData") {
+      if (state.activeGroup === "PeriodData" && isUserAddedColumn(state.activeSheet, c)) {
         var headerFocusValSAC;
         inp.addEventListener("focus", function () { headerFocusValSAC = inp.value; });
         inp.addEventListener("blur", function () { if (inp.value !== headerFocusValSAC) renameColumn(state.activeSheet, c, inp.value); });
@@ -1996,8 +2013,7 @@ function renderTable() {
         btnAdd.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); addDriverCodeColumnSAC(); });
         wrap.appendChild(btnAdd);
         th.appendChild(wrap);
-      } else if (canDeleteSacColumn(c)) {
-        // SAC column delete X: 新增欄位 (col>=4) 表頭顯示 X
+      } else if (isUserAddedColumn(state.activeSheet, c)) {
         var wrap = document.createElement("span");
         wrap.className = "th-dc2-wrap";
         wrap.appendChild(inp);
@@ -2005,8 +2021,8 @@ function renderTable() {
         btnDel.type = "button";
         btnDel.className = "btn-delete-column";
         btnDel.textContent = "\u00D7";
-        btnDel.title = "Delete Driver column";
-        btnDel.addEventListener("click", (function (col) { return function (e) { e.stopPropagation(); e.preventDefault(); deleteDriverCodeColumnSAC(col); }; })(c));
+        btnDel.title = "Delete column";
+        btnDel.addEventListener("click", (function (col) { return function (e) { e.stopPropagation(); e.preventDefault(); deleteUserColumn(state.activeSheet, col); }; })(c));
         wrap.appendChild(btnDel);
         th.appendChild(wrap);
       } else {
@@ -2088,13 +2104,22 @@ function renderTable() {
         btnIns.addEventListener("click", function (e) { e.stopPropagation(); insertColumnRight(state.activeSheet, colIndex); });
         th.classList.add("th-has-insert");
         th.appendChild(btnIns);
+        if (isUserAddedColumn(state.activeSheet, colIndex)) {
+          var btnDel = document.createElement("button");
+          btnDel.type = "button";
+          btnDel.className = "btn-delete-column";
+          btnDel.textContent = "\u00D7";
+          btnDel.title = "Delete column";
+          btnDel.addEventListener("click", function (e) { e.stopPropagation(); deleteUserColumn(state.activeSheet, colIndex); });
+          th.appendChild(btnDel);
+          th.addEventListener("dblclick", function () {
+            var newName = prompt("Rename column:", (sheet.headers[colIndex] != null) ? String(sheet.headers[colIndex]) : "");
+            if (newName !== null) renameColumn(state.activeSheet, colIndex, newName);
+          });
+        }
         th.addEventListener("contextmenu", function (e) {
           e.preventDefault();
           insertColumnRight(state.activeSheet, colIndex);
-        });
-        th.addEventListener("dblclick", function () {
-          var newName = prompt("Rename column:", (sheet.headers[colIndex] != null) ? String(sheet.headers[colIndex]) : "");
-          if (newName !== null) renameColumn(state.activeSheet, colIndex, newName);
         });
       }
       tr.appendChild(th);
@@ -2186,6 +2211,8 @@ function addDriverCodeColumn() {
   var N = maxN + 1;
   if (N < 3) N = 3;
   sheet.headers.push("Driver Code " + N);
+  ensureUserAddedColIds(sheet);
+  sheet.userAddedColIds.push("u_" + Date.now());
   for (var i = 0; i < sheet.data.length; i++) {
     sheet.data[i].push("");
   }
@@ -2196,19 +2223,8 @@ function addDriverCodeColumn() {
 function deleteDriverCodeColumn(colIndex) {
   var sheetName = "Resource Driver(Actvity Center)";
   if (state.activeSheet !== sheetName || state.activeGroup !== "PeriodData") return;
-  var sheet = state.data[sheetName];
-  if (!sheet || !sheet.headers || !sheet.data) return;
-  if (colIndex < 4) return;
-  if (!confirm("Are you sure you want to delete this column? All data in this column will be deleted.")) return;
-  sheet.headers.splice(colIndex, 1);
-  for (var i = 0; i < sheet.data.length; i++) {
-    sheet.data[i].splice(colIndex, 1);
-  }
-  for (var i = 4; i < sheet.headers.length; i++) {
-    sheet.headers[i] = "Driver Code " + (i - 1);
-  }
-  renderTable();
-  autoSave();
+  if (!isUserAddedColumn(sheetName, colIndex)) return;
+  deleteUserColumn(sheetName, colIndex);
 }
 
 function addDriverCodeColumnMAC() {
@@ -2228,6 +2244,8 @@ function addDriverCodeColumnMAC() {
   sheet.headers2.push("");
   if (!sheet.headers3) sheet.headers3 = [];
   sheet.headers3.push("");
+  ensureUserAddedColIds(sheet);
+  sheet.userAddedColIds.push("u_" + Date.now());
   for (var i = 0; i < sheet.data.length; i++) {
     sheet.data[i].push("");
   }
@@ -2243,18 +2261,8 @@ function canDeleteMacColumn(colIndex) { return colIndex >= 4; }
 function deleteDriverCodeColumnMAC(colIndex) {
   var sheetName = "Resource Driver(M. A. C.)";
   if (state.activeSheet !== sheetName || state.activeGroup !== "PeriodData") return;
-  var sheet = state.data[sheetName];
-  if (!sheet || !sheet.headers || !sheet.data) return;
-  if (!canDeleteMacColumn(colIndex)) return; // A/B/C/D 預設四欄不可刪
-  if (!confirm("Are you sure you want to delete this column? All data in this column will be deleted.")) return;
-  sheet.headers.splice(colIndex, 1);
-  if (sheet.headers2) sheet.headers2.splice(colIndex, 1);
-  if (sheet.headers3) sheet.headers3.splice(colIndex, 1);
-  for (var i = 0; i < sheet.data.length; i++) {
-    sheet.data[i].splice(colIndex, 1);
-  }
-  renderTable();
-  autoSave();
+  if (!isUserAddedColumn(sheetName, colIndex)) return;
+  deleteUserColumn(sheetName, colIndex);
 }
 
 function addDriverCodeColumnSAC() {
@@ -2274,6 +2282,8 @@ function addDriverCodeColumnSAC() {
   sheet.headers2.push("");
   if (!sheet.headers3) sheet.headers3 = [];
   sheet.headers3.push("");
+  ensureUserAddedColIds(sheet);
+  sheet.userAddedColIds.push("u_" + Date.now());
   for (var i = 0; i < sheet.data.length; i++) {
     sheet.data[i].push("");
   }
@@ -2289,18 +2299,8 @@ function canDeleteSacColumn(colIndex) { return colIndex >= 4; }
 function deleteDriverCodeColumnSAC(colIndex) {
   var sheetName = "Resource Driver(S. A. C.)";
   if (state.activeSheet !== sheetName || state.activeGroup !== "PeriodData") return;
-  var sheet = state.data[sheetName];
-  if (!sheet || !sheet.headers || !sheet.data) return;
-  if (!canDeleteSacColumn(colIndex)) return; // A/B/C/D 預設四欄不可刪
-  if (!confirm("Are you sure you want to delete this column? All data in this column will be deleted.")) return;
-  sheet.headers.splice(colIndex, 1);
-  if (sheet.headers2) sheet.headers2.splice(colIndex, 1);
-  if (sheet.headers3) sheet.headers3.splice(colIndex, 1);
-  for (var i = 0; i < sheet.data.length; i++) {
-    sheet.data[i].splice(colIndex, 1);
-  }
-  renderTable();
-  autoSave();
+  if (!isUserAddedColumn(sheetName, colIndex)) return;
+  deleteUserColumn(sheetName, colIndex);
 }
 
 // --- Insert column right / Rename column (PeriodData only) ---
@@ -2325,12 +2325,29 @@ function makeUniqueHeaderName(headers, desired, excludeColIndex) {
   return base + " " + Date.now();
 }
 
+function ensureUserAddedColIds(sheet) {
+  if (!sheet || !sheet.headers) return;
+  if (!sheet.userAddedColIds) sheet.userAddedColIds = [];
+  while (sheet.userAddedColIds.length < sheet.headers.length) sheet.userAddedColIds.push("");
+  if (sheet.userAddedColIds.length > sheet.headers.length) sheet.userAddedColIds.splice(sheet.headers.length);
+}
+
+function isUserAddedColumn(sheetName, colIndex) {
+  var sheet = state.data[sheetName];
+  if (!sheet || !sheet.headers || colIndex < 0 || colIndex >= sheet.headers.length) return false;
+  var ids = sheet.userAddedColIds;
+  if (ids && ids[colIndex]) return true;
+  if (!ids && (sheetName === "Resource Driver(Actvity Center)" || sheetName === "Resource Driver(M. A. C.)" || sheetName === "Resource Driver(S. A. C.)")) return colIndex >= 4;
+  return false;
+}
+
 function insertColumnAt(sheetName, colIndex, headerName) {
   var sheet = state.data[sheetName];
   if (!sheet || !sheet.headers) return;
   sheet.headers.splice(colIndex, 0, headerName);
   if (sheet.headers2) sheet.headers2.splice(colIndex, 0, "");
   if (sheet.headers3) sheet.headers3.splice(colIndex, 0, "");
+  if (sheet.userAddedColIds) sheet.userAddedColIds.splice(colIndex, 0, "");
   for (var i = 0; i < (sheet.data || []).length; i++) {
     sheet.data[i].splice(colIndex, 0, "");
   }
@@ -2342,6 +2359,7 @@ function removeColumn(sheetName, colIndex) {
   sheet.headers.splice(colIndex, 1);
   if (sheet.headers2) sheet.headers2.splice(colIndex, 1);
   if (sheet.headers3) sheet.headers3.splice(colIndex, 1);
+  if (sheet.userAddedColIds) sheet.userAddedColIds.splice(colIndex, 1);
   for (var i = 0; i < (sheet.data || []).length; i++) {
     sheet.data[i].splice(colIndex, 1);
   }
@@ -2354,9 +2372,12 @@ function insertColumnRight(sheetName, colIndex) {
   var base = (sheet.headers[colIndex] != null) ? String(sheet.headers[colIndex]).trim() : "";
   var newName = makeUniqueHeaderName(sheet.headers, base || null);
   var insertAt = colIndex + 1;
+  var userAddedId = "u_" + Date.now();
   beginAction("Insert column");
-  recordChangeSpecial({ type: "insert_col", sheet: sheetName, colIndex: insertAt, insertedHeaderName: newName });
+  recordChangeSpecial({ type: "insert_col", sheet: sheetName, colIndex: insertAt, insertedHeaderName: newName, userAddedId: userAddedId });
   insertColumnAt(sheetName, insertAt, newName);
+  ensureUserAddedColIds(sheet);
+  sheet.userAddedColIds[insertAt] = userAddedId;
   commitAction();
   state.changeLog.push({
     timestamp: new Date().toISOString(),
@@ -2384,10 +2405,12 @@ function insertColumnRight(sheetName, colIndex) {
 
 function renameColumn(sheetName, colIndex, newName, opts) {
   opts = opts || {};
+  if (!isUserAddedColumn(sheetName, colIndex)) return;
   var sheet = state.data[sheetName];
   if (!sheet || !sheet.headers) return;
   var oldName = (sheet.headers[colIndex] != null) ? String(sheet.headers[colIndex]) : "";
   var trimmed = String(newName).trim();
+  if (trimmed === "") return;
   if (trimmed === oldName) return;
   trimmed = makeUniqueHeaderName(sheet.headers, trimmed, colIndex);
   if (!opts.skipUndo) {
@@ -2412,12 +2435,41 @@ function renameColumn(sheetName, colIndex, newName, opts) {
 }
 
 function recordChangeSpecial(changeObj) {
+  var label = (changeObj.type === "insert_col" ? "Insert column" : changeObj.type === "delete_col" ? "Delete column" : "Rename column");
   if (state._tx) {
     state._tx.changes.push(changeObj);
   } else {
-    state.undoStack.push({ id: Date.now(), label: changeObj.type === "insert_col" ? "Insert column" : "Rename column", changes: [changeObj] });
+    state.undoStack.push({ id: Date.now(), label: label, changes: [changeObj] });
     clearRedo();
   }
+}
+
+function deleteUserColumn(sheetName, colIndex) {
+  if (state.activeGroup !== "PeriodData" || sheetName === "TableMapping") return;
+  if (!isUserAddedColumn(sheetName, colIndex)) return;
+  var sheet = state.data[sheetName];
+  if (!sheet || !sheet.headers || !sheet.data) return;
+  if (!confirm("Are you sure you want to delete this column? All data in this column will be deleted.")) return;
+  var deletedHeaderName = (sheet.headers[colIndex] != null) ? String(sheet.headers[colIndex]) : "";
+  var deletedHeader2 = (sheet.headers2 && sheet.headers2[colIndex] != null) ? String(sheet.headers2[colIndex]) : "";
+  var deletedHeader3 = (sheet.headers3 && sheet.headers3[colIndex] != null) ? String(sheet.headers3[colIndex]) : "";
+  var deletedValues = sheet.data.map(function (row) { return (row[colIndex] != null) ? String(row[colIndex]) : ""; });
+  var userAddedId = (sheet.userAddedColIds && sheet.userAddedColIds[colIndex]) ? sheet.userAddedColIds[colIndex] : "";
+  beginAction("Delete column");
+  recordChangeSpecial({ type: "delete_col", sheet: sheetName, colIndex: colIndex, deletedHeaderName: deletedHeaderName, deletedHeader2: deletedHeader2, deletedHeader3: deletedHeader3, deletedValues: deletedValues, userAddedId: userAddedId });
+  removeColumn(sheetName, colIndex);
+  commitAction();
+  state.changeLog.push({
+    timestamp: new Date().toISOString(),
+    sheet: getExcelSheetName(sheetName),
+    row: "",
+    column: deletedHeaderName,
+    oldValue: "[Column deleted]",
+    newValue: ""
+  });
+  autoSave();
+  renderTable();
+  updateSelectionUI();
 }
 
 function addRow() {
