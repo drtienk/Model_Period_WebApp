@@ -819,30 +819,7 @@ function ensureServiceDriverPeriodColumns() {
   if (!config || !config.headers) return;
   var templateColCount = config.headers.length;
   var currentColCount = sheet.headers ? sheet.headers.length : 0;
-  if (currentColCount > templateColCount) {
-    // 舊資料欄位數超過模板，截斷到模板欄位數（移除多餘欄位）
-    if (sheet.headers) {
-      sheet.headers = sheet.headers.slice(0, templateColCount);
-    }
-    // 更新所有資料列的欄位數
-    if (sheet.data) {
-      for (var i = 0; i < sheet.data.length; i++) {
-        if (sheet.data[i]) {
-          sheet.data[i] = sheet.data[i].slice(0, templateColCount);
-        }
-      }
-    }
-    // 截斷 headers2、headers3、userAddedColIds
-    if (sheet.headers2) {
-      sheet.headers2 = sheet.headers2.slice(0, templateColCount);
-    }
-    if (sheet.headers3) {
-      sheet.headers3 = sheet.headers3.slice(0, templateColCount);
-    }
-    if (sheet.userAddedColIds) {
-      sheet.userAddedColIds = sheet.userAddedColIds.slice(0, templateColCount);
-    }
-  } else if (currentColCount < templateColCount) {
+  if (currentColCount < templateColCount) {
     // 舊資料欄位數不足，補上新的系統欄位
     if (!sheet.headers) sheet.headers = [];
     while (sheet.headers.length < templateColCount) {
@@ -1744,25 +1721,6 @@ function uploadBackup(file) {
                 finalHeaders.push(buildExtraHeaderName(i));
               }
             }
-          } else if (internalName === "Service Driver_Period") {
-            // Service Driver_Period: 保留所有上傳的欄位，以實際欄位結構為準
-            // 前3欄固定使用模板（Business Unit, Customer Code, Product Code），之後使用上傳的欄位名或生成默認名稱
-            var templateColCount = templateHeaders.length;
-            var desiredColCount = Math.max(uploadedColCount, templateColCount);
-            finalHeaders = [];
-            for (var i = 0; i < desiredColCount; i++) {
-              if (i < 3) {
-                // 前3欄使用模板（Business Unit, Customer Code, Product Code）
-                finalHeaders.push(templateHeaders[i] || "");
-              } else if (i < headerRow.length) {
-                // 使用上傳的欄位名（如果存在），空白則生成 "Column N"（N 從 4 開始）
-                var uploadHeader = (typeof headerRow[i] === "string" ? String(headerRow[i]).trim() : "");
-                finalHeaders.push(uploadHeader || ("Column " + (i + 1)));
-              } else {
-                // 如果上傳欄位比模板少，生成默認名稱
-                finalHeaders.push("Column " + (i + 1));
-              }
-            }
           } else {
             // Generic sheets: expand headers to uploadedColCount if needed
             var templateColCount = templateHeaders.length;
@@ -1799,15 +1757,8 @@ function uploadBackup(file) {
           }
           const normalizedData = uploadedData.map(function (row) {
             const newRow = [].concat(row);
-            // For Service Driver_Period: if final colCount equals templateColCount, truncate to templateColCount
-            if (internalName === "Service Driver_Period" && colCount === templateHeaders.length) {
-              // Truncate to templateColCount (3 columns)
-              newRow.splice(templateHeaders.length);
-              while (newRow.length < templateHeaders.length) newRow.push("");
-            } else {
-              // Pad to colCount, but NEVER truncate (preserve all uploaded data)
-              while (newRow.length < colCount) newRow.push("");
-            }
+            // Pad to colCount, but NEVER truncate (preserve all uploaded data)
+            while (newRow.length < colCount) newRow.push("");
             return newRow;
           });
 
@@ -1825,9 +1776,6 @@ function uploadBackup(file) {
             if (internalName === "Resource Driver(Actvity Center)") {
               // RDAC: columns beyond index 1 (first 2 are template) are user-added if beyond template
               isNewColumn = (i >= 2 && i >= templateColCount);
-            } else if (internalName === "Service Driver_Period") {
-              // Service Driver_Period: columns beyond index 2 (first 3 are template) are user-added if beyond template
-              isNewColumn = (i >= 3 && i >= templateColCount);
             } else if (internalName === "TableMapping") {
               // TableMapping: never mark as user-added (system-defined)
               isNewColumn = false;
@@ -2785,23 +2733,58 @@ function renderTable() {
     var tr = document.createElement("tr");
     tr.appendChild(createCell("th", "row-num", "#"));
     var isPeriodDataHeader = (state.activeGroup === "PeriodData" && !isTableMapping);
+    // Service Driver special case: allow renaming only the rightmost two columns (Column4 and Column5)
+    var isServiceDriver = (state.activeSheet === "Service Driver_Period" && state.activeGroup === "PeriodData");
+    var lastTwoColIndices = isServiceDriver ? [headers.length - 2, headers.length - 1] : [];
     headers.forEach(function (h, colIndex) {
       var req = isRequired(state.activeSheet, h);
       var th = document.createElement("th");
       if (req) th.classList.add("required");
       th.setAttribute("data-col", String(colIndex));
       
-      // Normal header rendering for all columns
-      var wrap = document.createElement("span");
-      wrap.className = "th-header-wrap";
-      wrap.textContent = (h != null) ? String(h) : "";
-      if (req) {
-        var star = document.createElement("span");
-        star.className = "req-star";
-        star.textContent = "*";
-        wrap.appendChild(star);
+      // Service Driver: render last two columns as editable inputs
+      if (isServiceDriver && lastTwoColIndices.indexOf(colIndex) !== -1) {
+        var inp = document.createElement("input");
+        inp.className = "th-input";
+        inp.type = "text";
+        inp.value = (h != null) ? String(h) : "";
+        var headerFocusValue;
+        inp.addEventListener("focus", function () { headerFocusValue = inp.value; });
+        inp.addEventListener("blur", function () {
+          var newValue = inp.value.trim();
+          if (newValue !== headerFocusValue) {
+            // Ensure uniqueness
+            var uniqueName = makeUniqueHeaderName(sheet.headers, newValue, colIndex);
+            sheet.headers[colIndex] = uniqueName;
+            autoSave();
+            renderTable(); // Re-render to show updated header name
+          }
+        });
+        inp.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            inp.blur();
+          }
+        });
+        th.appendChild(inp);
+        if (req) {
+          var star = document.createElement("span");
+          star.className = "req-star";
+          star.textContent = "*";
+          th.appendChild(star);
+        }
+      } else {
+        // Normal header rendering for other columns
+        var wrap = document.createElement("span");
+        wrap.className = "th-header-wrap";
+        wrap.textContent = (h != null) ? String(h) : "";
+        if (req) {
+          var star = document.createElement("span");
+          star.className = "req-star";
+          star.textContent = "*";
+          wrap.appendChild(star);
+        }
+        th.appendChild(wrap);
       }
-      th.appendChild(wrap);
       
       if (isPeriodDataHeader) {
         var btnIns = document.createElement("button");
