@@ -1992,6 +1992,11 @@ function renderWorkbookToggle() {
   if (btnOptionalTabs) {
     btnOptionalTabs.style.display = state.activeGroup === "PeriodData" ? "" : "none";
   }
+  // 顯示/隱藏 Delete Period 按鈕（僅在 PeriodData 模式下顯示）
+  var btnDeletePeriod = document.getElementById("btnDeletePeriod");
+  if (btnDeletePeriod) {
+    btnDeletePeriod.style.display = state.activeGroup === "PeriodData" ? "" : "none";
+  }
   // 更新 period selector 選項
   if (state.activeGroup === "PeriodData") {
     updatePeriodSelector();
@@ -2154,6 +2159,120 @@ function createNewPeriod() {
   ensureAllSheets();
   renderAll();
   showStatus("Created and switched to period " + period);
+}
+
+function deleteCurrentPeriod() {
+  // 檢查必要條件
+  if (!state.studentId) {
+    showStatus("Please enter company name first", "error");
+    return;
+  }
+  if (state.activeGroup !== "PeriodData") {
+    showStatus("Delete Period is only available in Period Data mode", "error");
+    return;
+  }
+  if (!state.activePeriod) {
+    showStatus("No period selected", "error");
+    return;
+  }
+  
+  var period = state.activePeriod;
+  
+  // 二次確認
+  if (!confirm("Delete period " + period + "? This will permanently remove all data for this period. This action cannot be undone.")) {
+    return;
+  }
+  
+  var key = "excelForm_v1_" + state.studentId;
+  var parsed;
+  try {
+    var saved = localStorage.getItem(key);
+    if (!saved) {
+      showStatus("Period not found", "error");
+      return;
+    }
+    parsed = JSON.parse(saved);
+  } catch (e) {
+    console.error("Error reading storage:", e);
+    showStatus("Error reading storage", "error");
+    return;
+  }
+  
+  // 檢查 periods 是否存在
+  if (!parsed.periods || typeof parsed.periods !== "object") {
+    showStatus("Period not found", "error");
+    return;
+  }
+  
+  // 檢查要刪除的 period 是否存在
+  if (!parsed.periods[period]) {
+    showStatus("Period not found", "error");
+    return;
+  }
+  
+  // 刪除 period
+  delete parsed.periods[period];
+  
+  // 計算剩餘的 periods（排序後）
+  var remainingPeriods = Object.keys(parsed.periods).sort();
+  
+  // 如果刪除的是當前 activePeriod
+  if (period === state.activePeriod) {
+    if (remainingPeriods.length > 0) {
+      // 還有其他 periods：切換到排序後的第一個
+      var newPeriod = remainingPeriods[0];
+      parsed.activePeriod = newPeriod;
+      state.activePeriod = newPeriod;
+      state.activeGroup = "PeriodData";
+      
+      // 載入新 period 的資料
+      var periodData = parsed.periods[newPeriod];
+      state.data = periodData.data || {};
+      state.changeLog = periodData.changeLog || [];
+      state.activeSheet = periodData.activeSheet || "Exchange Rate";
+      
+      ensureAllSheets();
+      clearCutState();
+      renderAll();
+    } else {
+      // 沒有剩餘 periods：初始化為 template
+      parsed.activePeriod = null;
+      state.activePeriod = null;
+      state.activeGroup = "PeriodData";
+      
+      // 使用 template 初始化 PeriodData sheets
+      initFromTemplate();
+      var periodSheets = {};
+      for (var sheetName in state.data) {
+        var config = getSheetConfig(sheetName);
+        if (config && config.workbook === "PeriodData") {
+          periodSheets[sheetName] = state.data[sheetName];
+        }
+      }
+      state.data = periodSheets;
+      state.activeSheet = "Exchange Rate";
+      state.changeLog = [];
+      
+      ensureAllSheets();
+      clearCutState();
+      renderAll();
+    }
+  }
+  
+  // 更新 storage
+  parsed.activeGroup = "PeriodData";
+  try {
+    localStorage.setItem(key, JSON.stringify(parsed));
+  } catch (e) {
+    console.error("Storage error:", e);
+    showStatus("Storage error", "error");
+    return;
+  }
+  
+  // 更新下拉選單
+  updatePeriodSelector();
+  
+  showStatus("Deleted period " + period);
 }
 
 function renderGroupedNav() {
@@ -3159,6 +3278,13 @@ function bindEvents() {
   if (btnCreatePeriod) {
     btnCreatePeriod.addEventListener("click", function () {
       createNewPeriod();
+    });
+  }
+
+  var btnDeletePeriod = document.getElementById("btnDeletePeriod");
+  if (btnDeletePeriod) {
+    btnDeletePeriod.addEventListener("click", function () {
+      deleteCurrentPeriod();
     });
   }
 
