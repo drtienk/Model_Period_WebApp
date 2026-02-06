@@ -1920,7 +1920,7 @@ function createNewPeriod() {
     return;
   }
   
-  var period = prompt("Enter period (YYYY-MM, e.g. 2017-01):");
+  var period = prompt("Enter period (YYYY-MM, e.g. 2024-01):");
   if (!period) return;
   
   period = String(period).trim();
