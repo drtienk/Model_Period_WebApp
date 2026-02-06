@@ -36,7 +36,7 @@ function isValidPeriodFormat(period) {
   if (!match) return false;
   var year = parseInt(match[1], 10);
   var month = parseInt(match[2], 10);
-  return year >= 2024 && year <= 2032 && month >= 1 && month <= 12;
+  return year >= 2017 && year <= 2037 && month >= 1 && month <= 12;
 }
 
 function getAllPeriodsFromStorage() {
@@ -1852,7 +1852,7 @@ function updatePeriodSelector() {
 
 function switchPeriod(period) {
   if (!isValidPeriodFormat(period)) {
-    showStatus("Invalid period format. Must be YYYY-MM (2024-01 to 2032-12)", "error");
+    showStatus("Invalid period format. Must be YYYY-MM (2017-01 to 2037-12)", "error");
     return;
   }
   if (!state.studentId) {
@@ -1920,12 +1920,12 @@ function createNewPeriod() {
     return;
   }
   
-  var period = prompt("Enter period (YYYY-MM, e.g. 2024-01):");
+  var period = prompt("Enter period (YYYY-MM, e.g. 2017-01):");
   if (!period) return;
   
   period = String(period).trim();
   if (!isValidPeriodFormat(period)) {
-    showStatus("Invalid period format. Must be YYYY-MM (2024-01 to 2032-12)", "error");
+    showStatus("Invalid period format. Must be YYYY-MM (2017-01 to 2037-12)", "error");
     return;
   }
   
