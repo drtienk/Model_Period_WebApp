@@ -277,7 +277,7 @@ body {
   padding: 10px 14px;
   border: 1px solid #dbe2ea;
   border-radius: 999px;
-  background: #eef2f7;
+  background: #ffffff;
   color: var(--color-text);
   font-size: 13px;
   font-weight: 500;
@@ -288,7 +288,7 @@ body {
 }
 
 .nav-pill:hover {
-  background: #e2e8f0;
+  background: #f8fafc;
   border-color: #cbd5e1;
   color: var(--color-text);
 }
@@ -327,16 +327,16 @@ body {
   border-color: #2563eb;
 }
 
-/* Period Data：指定分頁變淡（白底、淺灰字），仍可點擊；active 時恢復原樣式 */
+/* Period Data：Optional tabs - grey/muted look (less prominent) */
 .nav-pill.tab-dim {
-  background-color: #fff;
-  color: #999;
-  border-color: #ddd;
+  background-color: #f1f5f9;
+  color: #64748b;
+  border-color: #cbd5e1;
 }
 .nav-pill.tab-dim:hover {
-  background-color: #f8fafc;
-  border-color: #cbd5e1;
-  color: #64748b;
+  background-color: #e2e8f0;
+  border-color: #94a3b8;
+  color: #475569;
 }
 .nav-pill.tab-dim.active {
   background: #3b82f6;

@@ -962,6 +962,78 @@ function resetRequiredFieldsOverride() {
 
 // --- Optional Tabs Admin Modal ---
 
+function getPeriodTabDimPrefs(studentId) {
+  if (!studentId) {
+    // No studentId, return default set
+    return new Set(PERIOD_DIM_SHEETS);
+  }
+  
+  var key = "excelForm_v1_" + studentId;
+  try {
+    var saved = localStorage.getItem(key);
+    if (!saved) {
+      return new Set(PERIOD_DIM_SHEETS);
+    }
+    
+    var parsed = JSON.parse(saved);
+    if (parsed.uiPrefs && parsed.uiPrefs.periodTabDim) {
+      var dimArray = parsed.uiPrefs.periodTabDim;
+      if (Array.isArray(dimArray)) {
+        return new Set(dimArray);
+      }
+    }
+    
+    // No saved prefs, return default
+    return new Set(PERIOD_DIM_SHEETS);
+  } catch (e) {
+    console.error("Error reading period tab dim prefs:", e);
+    return new Set(PERIOD_DIM_SHEETS);
+  }
+}
+
+function getOptionalTabsSetForUI() {
+  if (state.activeGroup !== "PeriodData") return new Set();
+  return getPeriodTabDimPrefs(state.studentId);
+}
+
+function setPeriodTabDimPrefs(studentId, dimArray) {
+  if (!studentId) {
+    showStatus("Please enter company name first", "error");
+    return;
+  }
+  
+  var key = "excelForm_v1_" + studentId;
+  
+  // Read existing data
+  var existingData = {};
+  try {
+    var existing = localStorage.getItem(key);
+    if (existing) {
+      existingData = JSON.parse(existing);
+    }
+  } catch (e) {
+    console.error("Error reading existing data:", e);
+    existingData = {};
+  }
+  
+  // Initialize uiPrefs if needed
+  if (!existingData.uiPrefs) {
+    existingData.uiPrefs = {};
+  }
+  
+  // Update periodTabDim
+  existingData.uiPrefs.periodTabDim = dimArray;
+  existingData.lastModified = new Date().toISOString();
+  
+  // Save back
+  try {
+    localStorage.setItem(key, JSON.stringify(existingData));
+  } catch (e) {
+    console.error("Error saving period tab dim prefs:", e);
+    showStatus("Storage error. Please try again.", "error");
+  }
+}
+
 function showOptionalTabsModal() {
   var modal = document.getElementById("optionalTabsModal");
   if (!modal) return;
@@ -981,13 +1053,14 @@ function renderOptionalTabsList() {
   if (!listContainer) return;
   
   var periodSheets = getSheetsForWorkbook("PeriodData");
+  var prefSet = getPeriodTabDimPrefs(state.studentId);
   
   var html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
   periodSheets.forEach(function(sheetName) {
     var config = getSheetConfig(sheetName);
     if (!config || config.hidden) return;
     
-    var isDim = PERIOD_DIM_SHEETS.has(sheetName);
+    var isDim = prefSet.has(sheetName);
     var checkboxId = "optional_tab_" + sheetName.replace(/[^a-zA-Z0-9]/g, "_");
     var itemClass = isDim ? "dropdown-item-selected" : "dropdown-item-unselected";
     html += '<label class="' + itemClass + '" style="display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; cursor: pointer;">';
@@ -1014,6 +1087,29 @@ function renderOptionalTabsList() {
       }
     });
   });
+}
+
+function saveOptionalTabsFromUI() {
+  if (!state.studentId) {
+    showStatus("Please enter company name first", "error");
+    return;
+  }
+  
+  var checkboxes = document.querySelectorAll("#optionalTabsList input[type='checkbox']");
+  var dimArray = [];
+  
+  checkboxes.forEach(function(cb) {
+    if (cb.checked && cb.dataset.sheet) {
+      dimArray.push(cb.dataset.sheet);
+    }
+  });
+  
+  setPeriodTabDimPrefs(state.studentId, dimArray);
+  showStatus("Optional Tabs saved.", "success");
+  // Re-render to reflect saved state (in case of any sync issues)
+  renderOptionalTabsList();
+  // Update nav pills styling immediately
+  renderGroupedNav();
 }
 
 // --- Storage ---
@@ -1905,6 +2001,9 @@ function renderGroupedNav() {
   container.innerHTML = "";
   if (!groups || !groups.length) return;
 
+  // Get optional tabs set for PeriodData
+  var optionalSet = (wbKey === "PeriodData") ? getOptionalTabsSetForUI() : null;
+
   groups.forEach(function (grp) {
     const row = document.createElement("div");
     row.className = "nav-group-row";
@@ -1927,8 +2026,9 @@ function renderGroupedNav() {
       if (wbKey === "ModelData" && ["Machine(Activity Center Driver)", "Material", "ProductProject"].indexOf(internalName) !== -1) {
         pill.classList.add("nav-pill-muted");
       }
-      if (wbKey === "PeriodData" && PERIOD_DIM_SHEETS.has(internalName)) {
-        pill.classList.add("tab-dim");
+      // Apply tab-dim class based on saved preferences for PeriodData
+      if (wbKey === "PeriodData" && optionalSet) {
+        pill.classList.toggle("tab-dim", optionalSet.has(internalName));
       }
       pill.textContent = getExcelSheetName(internalName);
       pill.addEventListener("click", function () {
@@ -2992,6 +3092,13 @@ function bindEvents() {
       if (e.target === optionalTabsModal) {
         hideOptionalTabsModal();
       }
+    });
+  }
+
+  var btnOptionalTabsSave = document.getElementById("btnOptionalTabsSave");
+  if (btnOptionalTabsSave) {
+    btnOptionalTabsSave.addEventListener("click", function () {
+      saveOptionalTabsFromUI();
     });
   }
 
