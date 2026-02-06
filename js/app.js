@@ -853,6 +853,113 @@ function hideStudentIdModal() {
   document.getElementById("studentModal").classList.add("hidden");
 }
 
+// --- Required Fields Admin Modal ---
+
+function showRequiredFieldsModal() {
+  var modal = document.getElementById("requiredFieldsModal");
+  var sheetSelect = document.getElementById("requiredFieldsSheetSelect");
+  var columnList = document.getElementById("requiredFieldsColumnList");
+  
+  // Populate sheet dropdown with PeriodData sheets only
+  sheetSelect.innerHTML = '<option value="">-- Select Sheet --</option>';
+  var periodSheets = getSheetsForWorkbook("PeriodData");
+  periodSheets.forEach(function(sheetName) {
+    var config = getSheetConfig(sheetName);
+    if (config && !config.hidden) {
+      var option = document.createElement("option");
+      option.value = sheetName;
+      option.textContent = getExcelSheetName(sheetName);
+      sheetSelect.appendChild(option);
+    }
+  });
+  
+  columnList.innerHTML = '<p style="color: var(--color-text-muted); font-size: 13px;">Please select a sheet to configure required fields.</p>';
+  modal.classList.remove("hidden");
+}
+
+function hideRequiredFieldsModal() {
+  document.getElementById("requiredFieldsModal").classList.add("hidden");
+}
+
+function renderRequiredFieldsColumnList(sheetName) {
+  var columnList = document.getElementById("requiredFieldsColumnList");
+  var config = getSheetConfig(sheetName);
+  if (!config || !config.headers) {
+    columnList.innerHTML = '<p style="color: var(--color-text-muted); font-size: 13px;">No columns found for this sheet.</p>';
+    return;
+  }
+  
+  var override = getRequiredOverride();
+  var sheetOverride = override[sheetName] || {};
+  var defaultRequired = config.required || [];
+  
+  var html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+  config.headers.forEach(function(headerName) {
+    var normalizedCol = norm(headerName);
+    var isOverrideSet = sheetOverride.hasOwnProperty(normalizedCol);
+    var isRequiredValue = isOverrideSet ? sheetOverride[normalizedCol] : defaultRequired.some(function(r) { return norm(r) === normalizedCol; });
+    
+    var checkboxId = "req_" + sheetName + "_" + normalizedCol.replace(/[^a-zA-Z0-9]/g, "_");
+    html += '<label style="display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; cursor: pointer;">';
+    html += '<input type="checkbox" id="' + checkboxId + '" data-sheet="' + sheetName + '" data-column="' + normalizedCol + '" ' + (isRequiredValue ? 'checked' : '') + '>';
+    html += '<span>' + (headerName || "(empty)") + '</span>';
+    if (isOverrideSet) {
+      html += '<span style="color: var(--color-text-muted); font-size: 11px; margin-left: auto;">(override)</span>';
+    }
+    html += '</label>';
+  });
+  html += '</div>';
+  columnList.innerHTML = html;
+}
+
+function saveRequiredFieldsOverride() {
+  var sheetSelect = document.getElementById("requiredFieldsSheetSelect");
+  var sheetName = sheetSelect.value;
+  if (!sheetName) {
+    showStatus("Please select a sheet first.", "error");
+    return;
+  }
+  
+  var override = getRequiredOverride();
+  if (!override[sheetName]) {
+    override[sheetName] = {};
+  }
+  
+  var checkboxes = document.querySelectorAll("#requiredFieldsColumnList input[type='checkbox']");
+  checkboxes.forEach(function(cb) {
+    if (cb.dataset.sheet === sheetName) {
+      var normalizedCol = cb.dataset.column;
+      var isChecked = cb.checked;
+      override[sheetName][normalizedCol] = isChecked;
+    }
+  });
+  
+  setRequiredOverride(override);
+  showStatus("Required fields configuration saved.", "success");
+  renderTable(); // Refresh table to show updated stars
+  hideRequiredFieldsModal();
+}
+
+function resetRequiredFieldsOverride() {
+  var sheetSelect = document.getElementById("requiredFieldsSheetSelect");
+  var sheetName = sheetSelect.value;
+  if (!sheetName) {
+    showStatus("Please select a sheet first.", "error");
+    return;
+  }
+  
+  var override = getRequiredOverride();
+  if (override[sheetName]) {
+    delete override[sheetName];
+    setRequiredOverride(override);
+    showStatus("Required fields reset to default for " + getExcelSheetName(sheetName) + ".", "success");
+    renderRequiredFieldsColumnList(sheetName);
+    renderTable(); // Refresh table to show updated stars
+  } else {
+    showStatus("No override found for this sheet.", "error");
+  }
+}
+
 // --- Storage ---
 
 function saveToStorage() {
@@ -1559,6 +1666,11 @@ function renderWorkbookToggle() {
   if (periodContainer) {
     periodContainer.style.display = state.activeGroup === "PeriodData" ? "flex" : "none";
   }
+  // 顯示/隱藏 Required Fields 按鈕（僅在 PeriodData 模式下顯示）
+  var btnRequiredFields = document.getElementById("btnRequiredFields");
+  if (btnRequiredFields) {
+    btnRequiredFields.style.display = state.activeGroup === "PeriodData" ? "" : "none";
+  }
   // 更新 period selector 選項
   if (state.activeGroup === "PeriodData") {
     updatePeriodSelector();
@@ -1856,6 +1968,12 @@ function renderTable() {
           const wrap = document.createElement("span");
           wrap.className = "th-dc2-wrap";
           wrap.appendChild(inp);
+          if (req) {
+            const star = document.createElement("span");
+            star.className = "req-star";
+            star.textContent = "*";
+            wrap.appendChild(star);
+          }
           const btn = document.createElement("button");
           btn.type = "button";
           btn.className = "btn-add-column";
@@ -1871,6 +1989,12 @@ function renderTable() {
           const wrap = document.createElement("span");
           wrap.className = "th-dc2-wrap";
           wrap.appendChild(inp);
+          if (req) {
+            const star = document.createElement("span");
+            star.className = "req-star";
+            star.textContent = "*";
+            wrap.appendChild(star);
+          }
           const btn = document.createElement("button");
           btn.type = "button";
           btn.className = "btn-delete-column";
@@ -1883,10 +2007,32 @@ function renderTable() {
           wrap.appendChild(btn);
           th.appendChild(wrap);
         } else {
-          th.appendChild(inp);
+          if (req) {
+            const wrap = document.createElement("span");
+            wrap.className = "th-header-wrap";
+            wrap.appendChild(inp);
+            const star = document.createElement("span");
+            star.className = "req-star";
+            star.textContent = "*";
+            wrap.appendChild(star);
+            th.appendChild(wrap);
+          } else {
+            th.appendChild(inp);
+          }
         }
       } else {
-        th.textContent = (h != null) ? String(h) : "";
+        if (req) {
+          const wrap = document.createElement("span");
+          wrap.className = "th-header-wrap";
+          wrap.textContent = (h != null) ? String(h) : "";
+          const star = document.createElement("span");
+          star.className = "req-star";
+          star.textContent = "*";
+          wrap.appendChild(star);
+          th.appendChild(wrap);
+        } else {
+          th.textContent = (h != null) ? String(h) : "";
+        }
       }
       if (state.activeGroup === "PeriodData") {
         th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, colIndex); });
@@ -1910,14 +2056,27 @@ function renderTable() {
     for (var c = 0; c < 3; c++) {
       var th = document.createElement("th");
       th.setAttribute("rowspan", "3");
-      th.textContent = (headers[c] != null) ? String(headers[c]) : "";
-      if (isRequired(state.activeSheet, headers[c])) th.classList.add("required");
+      var req = isRequired(state.activeSheet, headers[c]);
+      if (req) th.classList.add("required");
+      if (req) {
+        var wrap = document.createElement("span");
+        wrap.className = "th-header-wrap";
+        wrap.textContent = (headers[c] != null) ? String(headers[c]) : "";
+        var star = document.createElement("span");
+        star.className = "req-star";
+        star.textContent = "*";
+        wrap.appendChild(star);
+        th.appendChild(wrap);
+      } else {
+        th.textContent = (headers[c] != null) ? String(headers[c]) : "";
+      }
       if (state.activeGroup === "PeriodData") (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
       tr1.appendChild(th);
     }
     for (var c = 3; c < headers.length; c++) {
       var th = document.createElement("th");
-      if (isRequired(state.activeSheet, headers[c])) th.classList.add("required");
+      var req = isRequired(state.activeSheet, headers[c]);
+      if (req) th.classList.add("required");
       var inp = document.createElement("input");
       inp.className = "th-input";
       inp.type = "text";
@@ -1937,6 +2096,12 @@ function renderTable() {
         var wrap = document.createElement("span");
         wrap.className = "th-dc2-wrap";
         wrap.appendChild(inp);
+        if (req) {
+          var star = document.createElement("span");
+          star.className = "req-star";
+          star.textContent = "*";
+          wrap.appendChild(star);
+        }
         var btnAdd = document.createElement("button");
         btnAdd.type = "button";
         btnAdd.className = "btn-add-column";
@@ -1949,6 +2114,12 @@ function renderTable() {
         var wrap = document.createElement("span");
         wrap.className = "th-dc2-wrap";
         wrap.appendChild(inp);
+        if (req) {
+          var star = document.createElement("span");
+          star.className = "req-star";
+          star.textContent = "*";
+          wrap.appendChild(star);
+        }
         var btnDel = document.createElement("button");
         btnDel.type = "button";
         btnDel.className = "btn-delete-column";
@@ -1958,7 +2129,18 @@ function renderTable() {
         wrap.appendChild(btnDel);
         th.appendChild(wrap);
       } else {
-        th.appendChild(inp);
+        if (req) {
+          var wrap = document.createElement("span");
+          wrap.className = "th-header-wrap";
+          wrap.appendChild(inp);
+          var star = document.createElement("span");
+          star.className = "req-star";
+          star.textContent = "*";
+          wrap.appendChild(star);
+          th.appendChild(wrap);
+        } else {
+          th.appendChild(inp);
+        }
       }
       if (state.activeGroup === "PeriodData") (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
       tr1.appendChild(th);
@@ -2022,14 +2204,27 @@ function renderTable() {
     for (var c = 0; c < 3; c++) {
       var th = document.createElement("th");
       th.setAttribute("rowspan", "3");
-      th.textContent = (headers[c] != null) ? String(headers[c]) : "";
-      if (isRequired(state.activeSheet, headers[c])) th.classList.add("required");
+      var req = isRequired(state.activeSheet, headers[c]);
+      if (req) th.classList.add("required");
+      if (req) {
+        var wrap = document.createElement("span");
+        wrap.className = "th-header-wrap";
+        wrap.textContent = (headers[c] != null) ? String(headers[c]) : "";
+        var star = document.createElement("span");
+        star.className = "req-star";
+        star.textContent = "*";
+        wrap.appendChild(star);
+        th.appendChild(wrap);
+      } else {
+        th.textContent = (headers[c] != null) ? String(headers[c]) : "";
+      }
       if (state.activeGroup === "PeriodData") (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
       tr1.appendChild(th);
     }
     for (var c = 3; c < headers.length; c++) {
       var th = document.createElement("th");
-      if (isRequired(state.activeSheet, headers[c])) th.classList.add("required");
+      var req = isRequired(state.activeSheet, headers[c]);
+      if (req) th.classList.add("required");
       var inp = document.createElement("input");
       inp.className = "th-input";
       inp.type = "text";
@@ -2049,6 +2244,12 @@ function renderTable() {
         var wrap = document.createElement("span");
         wrap.className = "th-dc2-wrap";
         wrap.appendChild(inp);
+        if (req) {
+          var star = document.createElement("span");
+          star.className = "req-star";
+          star.textContent = "*";
+          wrap.appendChild(star);
+        }
         var btnAdd = document.createElement("button");
         btnAdd.type = "button";
         btnAdd.className = "btn-add-column";
@@ -2061,6 +2262,12 @@ function renderTable() {
         var wrap = document.createElement("span");
         wrap.className = "th-dc2-wrap";
         wrap.appendChild(inp);
+        if (req) {
+          var star = document.createElement("span");
+          star.className = "req-star";
+          star.textContent = "*";
+          wrap.appendChild(star);
+        }
         var btnDel = document.createElement("button");
         btnDel.type = "button";
         btnDel.className = "btn-delete-column";
@@ -2070,7 +2277,18 @@ function renderTable() {
         wrap.appendChild(btnDel);
         th.appendChild(wrap);
       } else {
-        th.appendChild(inp);
+        if (req) {
+          var wrap = document.createElement("span");
+          wrap.className = "th-header-wrap";
+          wrap.appendChild(inp);
+          var star = document.createElement("span");
+          star.className = "req-star";
+          star.textContent = "*";
+          wrap.appendChild(star);
+          th.appendChild(wrap);
+        } else {
+          th.appendChild(inp);
+        }
       }
       if (state.activeGroup === "PeriodData") (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
       tr1.appendChild(th);
@@ -2125,14 +2343,13 @@ function renderTable() {
     var isPeriodDataHeader = (state.activeGroup === "PeriodData" && !isTableMapping);
     headers.forEach(function (h, colIndex) {
       var req = isRequired(state.activeSheet, h);
-      var showStar = (state.activeGroup === "ModelData" && (state.activeSheet === "Company" || state.activeSheet === "Company Resource") && req);
       var th = document.createElement("th");
       if (req) th.classList.add("required");
       th.setAttribute("data-col", String(colIndex));
       var wrap = document.createElement("span");
       wrap.className = "th-header-wrap";
       wrap.textContent = (h != null) ? String(h) : "";
-      if (showStar) {
+      if (req) {
         var star = document.createElement("span");
         star.className = "req-star";
         star.textContent = "*";
@@ -2641,6 +2858,57 @@ function bindEvents() {
     document.getElementById("resetModal").classList.add("hidden");
     resetData();
   });
+
+  // Required Fields Admin Modal events
+  var btnRequiredFields = document.getElementById("btnRequiredFields");
+  if (btnRequiredFields) {
+    btnRequiredFields.addEventListener("click", function () {
+      showRequiredFieldsModal();
+    });
+  }
+
+  var requiredFieldsSheetSelect = document.getElementById("requiredFieldsSheetSelect");
+  if (requiredFieldsSheetSelect) {
+    requiredFieldsSheetSelect.addEventListener("change", function () {
+      var sheetName = this.value;
+      if (sheetName) {
+        renderRequiredFieldsColumnList(sheetName);
+      } else {
+        document.getElementById("requiredFieldsColumnList").innerHTML = '<p style="color: var(--color-text-muted); font-size: 13px;">Please select a sheet to configure required fields.</p>';
+      }
+    });
+  }
+
+  var btnRequiredFieldsSave = document.getElementById("btnRequiredFieldsSave");
+  if (btnRequiredFieldsSave) {
+    btnRequiredFieldsSave.addEventListener("click", function () {
+      saveRequiredFieldsOverride();
+    });
+  }
+
+  var btnRequiredFieldsReset = document.getElementById("btnRequiredFieldsReset");
+  if (btnRequiredFieldsReset) {
+    btnRequiredFieldsReset.addEventListener("click", function () {
+      resetRequiredFieldsOverride();
+    });
+  }
+
+  var btnRequiredFieldsCancel = document.getElementById("btnRequiredFieldsCancel");
+  if (btnRequiredFieldsCancel) {
+    btnRequiredFieldsCancel.addEventListener("click", function () {
+      hideRequiredFieldsModal();
+    });
+  }
+
+  // Close modal when clicking outside
+  var requiredFieldsModal = document.getElementById("requiredFieldsModal");
+  if (requiredFieldsModal) {
+    requiredFieldsModal.addEventListener("click", function (e) {
+      if (e.target === requiredFieldsModal) {
+        hideRequiredFieldsModal();
+      }
+    });
+  }
 
   document.getElementById("btnAddRow").addEventListener("click", function () {
     addRow();

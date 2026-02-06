@@ -40,6 +40,7 @@
           <input type="file" id="inputUpload" accept=".xlsx" hidden>
         </label>
         <button type="button" id="btnDownload" class="btn btn-primary">Download</button>
+        <button type="button" id="btnRequiredFields" class="btn btn-secondary" style="display: none;">Required Fields</button>
         <button type="button" id="btnReset" class="btn btn-secondary">Reset</button>
       </div>
     </div>
@@ -88,6 +89,27 @@
       <div class="modal-actions">
         <button type="button" id="btnResetCancel" class="btn btn-secondary">Cancel</button>
         <button type="button" id="btnResetConfirm" class="btn btn-danger">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Required Fields Admin Modal -->
+  <div id="requiredFieldsModal" class="modal-overlay hidden">
+    <div class="modal" style="max-width: 600px;">
+      <h3>Required Fields Configuration</h3>
+      <div style="margin-bottom: 16px;">
+        <label for="requiredFieldsSheetSelect" style="display: block; margin-bottom: 8px; font-weight: 500;">Select Sheet:</label>
+        <select id="requiredFieldsSheetSelect" class="period-select" style="width: 100%; padding: 8px;">
+          <option value="">-- Select Sheet --</option>
+        </select>
+      </div>
+      <div id="requiredFieldsColumnList" style="max-height: 400px; overflow-y: auto; margin-bottom: 16px;">
+        <p style="color: var(--color-text-muted); font-size: 13px;">Please select a sheet to configure required fields.</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="btnRequiredFieldsReset" class="btn btn-secondary">Reset to Default</button>
+        <button type="button" id="btnRequiredFieldsCancel" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="btnRequiredFieldsSave" class="btn btn-primary">Save</button>
       </div>
     </div>
   </div>

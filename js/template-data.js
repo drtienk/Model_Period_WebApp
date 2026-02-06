@@ -608,7 +608,34 @@ function getSheetConfig(sheetName) {
 
 function norm(s) { return String(s).trim().replace(/\s+/g, " ").replace(/[–—]/g, "-"); }
 
+// Admin override storage for required fields
+function getRequiredOverride() {
+  try {
+    var stored = localStorage.getItem("period_required_override_v1");
+    if (!stored) return {};
+    return JSON.parse(stored) || {};
+  } catch (e) {
+    console.error("Error reading required override:", e);
+    return {};
+  }
+}
+
+function setRequiredOverride(override) {
+  try {
+    localStorage.setItem("period_required_override_v1", JSON.stringify(override));
+  } catch (e) {
+    console.error("Error saving required override:", e);
+  }
+}
+
 function isRequired(sheetName, columnName) {
+  // Check admin override first
+  var override = getRequiredOverride();
+  var normalizedCol = norm(columnName);
+  if (override[sheetName] && override[sheetName].hasOwnProperty(normalizedCol)) {
+    return override[sheetName][normalizedCol] === true;
+  }
+  // Fall back to TEMPLATE_DATA default
   const config = TEMPLATE_DATA.sheets[sheetName];
   if (!config || !config.required) return false;
   return config.required.some(function (r) { return norm(r) === norm(columnName); });
