@@ -537,8 +537,8 @@ const TEMPLATE_DATA = {
     "Service Driver_Period": {
       workbook: "PeriodData",
       sheetNameInExcel: "Service Driver",
-      headers: ["Business Unit", "Customer Code", "Product Code"],
-      data: Array(100).fill(0).map(function () { return Array(3).fill(""); }),
+      headers: ["Business Unit", "Customer Code", "Product Code", "Column 4", "Column 5"],
+      data: Array(100).fill(0).map(function () { return Array(5).fill(""); }),
       required: ["Business Unit"]
     },
     "Std. Workhour": {

@@ -808,6 +808,37 @@ function ensureAllSheets() {
   }
   ensureMACHeaderRows();
   ensureSACHeaderRows();
+  ensureServiceDriverPeriodColumns();
+}
+
+function ensureServiceDriverPeriodColumns() {
+  var sheetName = "Service Driver_Period";
+  var sheet = state.data[sheetName];
+  if (!sheet) return;
+  var config = getSheetConfig(sheetName);
+  if (!config || !config.headers) return;
+  var templateColCount = config.headers.length;
+  var currentColCount = sheet.headers ? sheet.headers.length : 0;
+  if (currentColCount < templateColCount) {
+    // 舊資料欄位數不足，補上新的系統欄位
+    if (!sheet.headers) sheet.headers = [];
+    while (sheet.headers.length < templateColCount) {
+      var templateIndex = sheet.headers.length;
+      sheet.headers.push(config.headers[templateIndex] || "");
+    }
+    // 更新所有資料列的欄位數
+    if (!sheet.data) sheet.data = [];
+    for (var i = 0; i < sheet.data.length; i++) {
+      if (!sheet.data[i]) sheet.data[i] = [];
+      while (sheet.data[i].length < templateColCount) {
+        sheet.data[i].push("");
+      }
+    }
+    // 如果沒有資料列，建立一個空列
+    if (sheet.data.length === 0) {
+      sheet.data.push(Array(templateColCount).fill(""));
+    }
+  }
 }
 
 // --- Student Modal ---
@@ -1777,6 +1808,19 @@ function renderTable() {
 
   if (sheet.headers && sheet.headers.length > 0 && (!sheet.data || sheet.data.length === 0)) {
     sheet.data = [Array(sheet.headers.length).fill("")];
+  }
+  // 確保資料列的欄位數與 headers 匹配（安全檢查）
+  if (sheet.headers && sheet.data) {
+    var headerCount = sheet.headers.length;
+    for (var i = 0; i < sheet.data.length; i++) {
+      if (!sheet.data[i]) sheet.data[i] = [];
+      while (sheet.data[i].length < headerCount) {
+        sheet.data[i].push("");
+      }
+      if (sheet.data[i].length > headerCount) {
+        sheet.data[i] = sheet.data[i].slice(0, headerCount);
+      }
+    }
   }
 
   const headers = sheet.headers;
