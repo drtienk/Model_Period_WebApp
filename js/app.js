@@ -1570,6 +1570,17 @@ function downloadWorkbook(workbookKey, timestamp, periodSuffix) {
 
 // --- Upload (auto-detect workbook) ---
 
+// Helper: Generate column name for extra columns (1-based index)
+function buildExtraHeaderName(idx) {
+  return "Column " + (idx + 1);
+}
+
+// Helper: Pick header name from uploaded cell or generate default
+function pickHeaderName(uploadHeaderCell, idx) {
+  var trimmed = (uploadHeaderCell != null) ? String(uploadHeaderCell).trim() : "";
+  return trimmed !== "" ? trimmed : buildExtraHeaderName(idx);
+}
+
 function uploadBackup(file) {
   if (!state.studentId) {
     showStatus("Enter your company name first", "error");
@@ -1605,78 +1616,179 @@ function uploadBackup(file) {
           const templateHeaders = config.headers;
           if (internalName === "Resource Driver(M. A. C.)" && config.headerRows) {
             var colCount, finalH, finalH2, finalH3, nd;
+            // Compute max length across all rows (including header rows and data rows)
+            var dataMaxLen = 0;
+            for (var r = 0; r < jsonData.length; r++) {
+              if (Array.isArray(jsonData[r]) && jsonData[r].length > dataMaxLen) {
+                dataMaxLen = jsonData[r].length;
+              }
+            }
             if (jsonData.length >= 3 && Array.isArray(jsonData[0]) && Array.isArray(jsonData[1]) && Array.isArray(jsonData[2])) {
               var r0 = jsonData[0], r1 = jsonData[1], r2 = jsonData[2];
-              colCount = Math.max(r0.length, r1.length, r2.length, (templateHeaders || []).length);
+              colCount = Math.max(r0.length, r1.length, r2.length, dataMaxLen, (templateHeaders || []).length);
               finalH = []; for (var i = 0; i < colCount; i++) finalH.push((r0[i] != null) ? String(r0[i]).trim() : "");
               finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
               finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
-              nd = jsonData.slice(3).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n.slice(0, colCount); });
+              nd = jsonData.slice(3).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n; });
             } else {
               var row0 = Array.isArray(jsonData[0]) ? jsonData[0] : [];
-              colCount = Math.max(row0.length, (templateHeaders || []).length);
+              colCount = Math.max(row0.length, dataMaxLen, (templateHeaders || []).length);
               finalH = []; for (var i = 0; i < colCount; i++) finalH.push((row0[i] != null) ? String(row0[i]).trim() : "");
               finalH2 = Array(colCount).fill(""); finalH3 = Array(colCount).fill("");
-              nd = jsonData.slice(1).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n.slice(0, colCount); });
+              nd = jsonData.slice(1).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n; });
             }
-            state.data[internalName] = { headers: finalH, headers2: finalH2, headers3: finalH3, data: nd.length > 0 ? nd : [Array(colCount).fill("")] };
+            var macSheet = { headers: finalH, headers2: finalH2, headers3: finalH3, data: nd.length > 0 ? nd : [Array(colCount).fill("")] };
+            // Mark uploaded columns beyond template as user-added
+            ensureUserAddedColIds(macSheet);
+            var templateColCount = templateHeaders.length;
+            var baseTime = Date.now();
+            for (var i = 0; i < colCount; i++) {
+              // MAC: columns beyond index 3 (first 4 are template) are user-added if beyond template
+              var isNewColumn = (i >= 3 && i >= templateColCount);
+              if (isNewColumn && (!macSheet.userAddedColIds[i] || macSheet.userAddedColIds[i] === "")) {
+                macSheet.userAddedColIds[i] = "u_" + baseTime + "_" + i;
+              }
+            }
+            state.data[internalName] = macSheet;
             return;
           }
           if (internalName === "Resource Driver(S. A. C.)" && config.headerRows) {
             var colCount, finalH, finalH2, finalH3, nd;
+            // Compute max length across all rows (including header rows and data rows)
+            var dataMaxLen = 0;
+            for (var r = 0; r < jsonData.length; r++) {
+              if (Array.isArray(jsonData[r]) && jsonData[r].length > dataMaxLen) {
+                dataMaxLen = jsonData[r].length;
+              }
+            }
             if (jsonData.length >= 3 && Array.isArray(jsonData[0]) && Array.isArray(jsonData[1]) && Array.isArray(jsonData[2])) {
               var r0 = jsonData[0], r1 = jsonData[1], r2 = jsonData[2];
-              colCount = Math.max(r0.length, r1.length, r2.length, (templateHeaders || []).length);
+              colCount = Math.max(r0.length, r1.length, r2.length, dataMaxLen, (templateHeaders || []).length);
               finalH = []; for (var i = 0; i < colCount; i++) finalH.push((r0[i] != null) ? String(r0[i]).trim() : "");
               finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
               finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
-              nd = jsonData.slice(3).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n.slice(0, colCount); });
+              nd = jsonData.slice(3).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n; });
             } else {
               var row0 = Array.isArray(jsonData[0]) ? jsonData[0] : [];
-              colCount = Math.max(row0.length, (templateHeaders || []).length);
+              colCount = Math.max(row0.length, dataMaxLen, (templateHeaders || []).length);
               finalH = []; for (var i = 0; i < colCount; i++) finalH.push((row0[i] != null) ? String(row0[i]).trim() : "");
               finalH2 = Array(colCount).fill(""); finalH3 = Array(colCount).fill("");
-              nd = jsonData.slice(1).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n.slice(0, colCount); });
+              nd = jsonData.slice(1).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n; });
             }
-            state.data[internalName] = { headers: finalH, headers2: finalH2, headers3: finalH3, data: nd.length > 0 ? nd : [Array(colCount).fill("")] };
+            var sacSheet = { headers: finalH, headers2: finalH2, headers3: finalH3, data: nd.length > 0 ? nd : [Array(colCount).fill("")] };
+            // Mark uploaded columns beyond template as user-added
+            ensureUserAddedColIds(sacSheet);
+            var templateColCount = templateHeaders.length;
+            var baseTime = Date.now();
+            for (var i = 0; i < colCount; i++) {
+              // SAC: columns beyond index 3 (first 4 are template) are user-added if beyond template
+              var isNewColumn = (i >= 3 && i >= templateColCount);
+              if (isNewColumn && (!sacSheet.userAddedColIds[i] || sacSheet.userAddedColIds[i] === "")) {
+                sacSheet.userAddedColIds[i] = "u_" + baseTime + "_" + i;
+              }
+            }
+            state.data[internalName] = sacSheet;
             return;
           }
 
+          // Compute uploaded column count: max of header row length and max data row length
+          var headerRow = Array.isArray(jsonData[0]) ? jsonData[0] : [];
+          var maxRowLen = headerRow.length;
+          for (var r = 0; r < jsonData.length; r++) {
+            if (Array.isArray(jsonData[r]) && jsonData[r].length > maxRowLen) {
+              maxRowLen = jsonData[r].length;
+            }
+          }
+          var uploadedColCount = Math.max(headerRow.length, maxRowLen);
+          
           var finalHeaders = templateHeaders;
           if (internalName === "Resource Driver(Actvity Center)") {
             // Resource Driver(Actvity Center): 保留所有上傳的欄位，以實際欄位結構為準
-            var uploadHeaders = Array.isArray(jsonData[0]) ? jsonData[0] : [];
-            var uploadColCount = uploadHeaders.length;
+            // 前2欄固定使用模板，之後使用上傳的欄位名或生成默認名稱
             var templateColCount = templateHeaders.length;
-            // 確保至少保留模板的必要欄位（前2欄固定）
-            var minColCount = Math.max(uploadColCount, templateColCount);
+            var desiredColCount = Math.max(uploadedColCount, templateColCount);
             finalHeaders = [];
-            for (var i = 0; i < minColCount; i++) {
+            for (var i = 0; i < desiredColCount; i++) {
               if (i < 2) {
                 // 前2欄使用模板（Activity Center Code, (Activity Center)）
                 finalHeaders.push(templateHeaders[i] || "");
-              } else if (i < uploadColCount) {
-                // 使用上傳的欄位名（保留所有新增欄位）
-                var uploadHeader = (typeof uploadHeaders[i] === "string" ? String(uploadHeaders[i]).trim() : "");
-                finalHeaders.push(uploadHeader || "");
+              } else if (i < headerRow.length) {
+                // 使用上傳的欄位名（如果存在）
+                var uploadHeader = (typeof headerRow[i] === "string" ? String(headerRow[i]).trim() : "");
+                finalHeaders.push(uploadHeader || buildExtraHeaderName(i));
               } else {
-                // 如果上傳欄位比模板少，補空字串（不應該發生，但以防萬一）
-                finalHeaders.push("");
+                // 如果上傳欄位比模板少，生成默認名稱
+                finalHeaders.push(buildExtraHeaderName(i));
+              }
+            }
+          } else {
+            // Generic sheets: expand headers to uploadedColCount if needed
+            var templateColCount = templateHeaders.length;
+            var desiredColCount = Math.max(templateColCount, uploadedColCount);
+            finalHeaders = [];
+            for (var i = 0; i < desiredColCount; i++) {
+              if (i < templateColCount) {
+                // Use template header if available
+                finalHeaders.push(templateHeaders[i] || "");
+              } else if (i < headerRow.length) {
+                // Use uploaded header name if available
+                finalHeaders.push(pickHeaderName(headerRow[i], i));
+              } else {
+                // Generate default name for extra columns
+                finalHeaders.push(buildExtraHeaderName(i));
               }
             }
           }
           var colCount = finalHeaders.length;
           const uploadedData = jsonData.slice(1);
+          // Check if any data row is longer than current colCount (shouldn't happen, but safety check)
+          var actualMaxLen = colCount;
+          for (var r = 0; r < uploadedData.length; r++) {
+            if (Array.isArray(uploadedData[r]) && uploadedData[r].length > actualMaxLen) {
+              actualMaxLen = uploadedData[r].length;
+            }
+          }
+          // Expand headers if needed to accommodate longer rows
+          if (actualMaxLen > colCount) {
+            for (var i = colCount; i < actualMaxLen; i++) {
+              finalHeaders.push(buildExtraHeaderName(i));
+            }
+            colCount = actualMaxLen;
+          }
           const normalizedData = uploadedData.map(function (row) {
             const newRow = [].concat(row);
+            // Pad to colCount, but NEVER truncate (preserve all uploaded data)
             while (newRow.length < colCount) newRow.push("");
-            return newRow.slice(0, colCount);
+            return newRow;
           });
 
-          state.data[internalName] = {
+          var sheet = {
             headers: finalHeaders,
             data: normalizedData.length > 0 ? normalizedData : [Array(colCount).fill("")]
           };
+          
+          // Mark uploaded columns beyond template as user-added
+          ensureUserAddedColIds(sheet);
+          var templateColCount = templateHeaders.length;
+          var baseTime = Date.now();
+          for (var i = 0; i < colCount; i++) {
+            var isNewColumn = false;
+            if (internalName === "Resource Driver(Actvity Center)") {
+              // RDAC: columns beyond index 1 (first 2 are template) are user-added if beyond template
+              isNewColumn = (i >= 2 && i >= templateColCount);
+            } else if (internalName === "TableMapping") {
+              // TableMapping: never mark as user-added (system-defined)
+              isNewColumn = false;
+            } else {
+              // Generic sheets: columns beyond template count are user-added
+              isNewColumn = (i >= templateColCount);
+            }
+            if (isNewColumn && (!sheet.userAddedColIds[i] || sheet.userAddedColIds[i] === "")) {
+              sheet.userAddedColIds[i] = "u_" + baseTime + "_" + i;
+            }
+          }
+          
+          state.data[internalName] = sheet;
         }
       });
 
