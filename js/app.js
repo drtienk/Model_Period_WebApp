@@ -960,6 +960,62 @@ function resetRequiredFieldsOverride() {
   }
 }
 
+// --- Optional Tabs Admin Modal ---
+
+function showOptionalTabsModal() {
+  var modal = document.getElementById("optionalTabsModal");
+  if (!modal) return;
+  renderOptionalTabsList();
+  modal.classList.remove("hidden");
+}
+
+function hideOptionalTabsModal() {
+  var modal = document.getElementById("optionalTabsModal");
+  if (modal) {
+    modal.classList.add("hidden");
+  }
+}
+
+function renderOptionalTabsList() {
+  var listContainer = document.getElementById("optionalTabsList");
+  if (!listContainer) return;
+  
+  var periodSheets = getSheetsForWorkbook("PeriodData");
+  
+  var html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+  periodSheets.forEach(function(sheetName) {
+    var config = getSheetConfig(sheetName);
+    if (!config || config.hidden) return;
+    
+    var isDim = PERIOD_DIM_SHEETS.has(sheetName);
+    var checkboxId = "optional_tab_" + sheetName.replace(/[^a-zA-Z0-9]/g, "_");
+    var itemClass = isDim ? "dropdown-item-selected" : "dropdown-item-unselected";
+    html += '<label class="' + itemClass + '" style="display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; cursor: pointer;">';
+    html += '<input type="checkbox" id="' + checkboxId + '" data-sheet="' + sheetName + '" ' + (isDim ? 'checked' : '') + '>';
+    html += '<span>' + getExcelSheetName(sheetName) + '</span>';
+    html += '</label>';
+  });
+  html += '</div>';
+  listContainer.innerHTML = html;
+  
+  // Add event listeners to update styling when checkbox state changes
+  var checkboxes = listContainer.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach(function(checkbox) {
+    checkbox.addEventListener('change', function() {
+      var label = this.closest('label');
+      if (label) {
+        if (this.checked) {
+          label.classList.remove('dropdown-item-unselected');
+          label.classList.add('dropdown-item-selected');
+        } else {
+          label.classList.remove('dropdown-item-selected');
+          label.classList.add('dropdown-item-unselected');
+        }
+      }
+    });
+  });
+}
+
 // --- Storage ---
 
 function saveToStorage() {
@@ -1670,6 +1726,11 @@ function renderWorkbookToggle() {
   var btnRequiredFields = document.getElementById("btnRequiredFields");
   if (btnRequiredFields) {
     btnRequiredFields.style.display = state.activeGroup === "PeriodData" ? "" : "none";
+  }
+  // 顯示/隱藏 Optional Tabs 按鈕（僅在 PeriodData 模式下顯示）
+  var btnOptionalTabs = document.getElementById("btnOptionalTabs");
+  if (btnOptionalTabs) {
+    btnOptionalTabs.style.display = state.activeGroup === "PeriodData" ? "" : "none";
   }
   // 更新 period selector 選項
   if (state.activeGroup === "PeriodData") {
@@ -2906,6 +2967,30 @@ function bindEvents() {
     requiredFieldsModal.addEventListener("click", function (e) {
       if (e.target === requiredFieldsModal) {
         hideRequiredFieldsModal();
+      }
+    });
+  }
+
+  // Optional Tabs Modal events
+  var btnOptionalTabs = document.getElementById("btnOptionalTabs");
+  if (btnOptionalTabs) {
+    btnOptionalTabs.addEventListener("click", function () {
+      showOptionalTabsModal();
+    });
+  }
+
+  var btnOptionalTabsClose = document.getElementById("btnOptionalTabsClose");
+  if (btnOptionalTabsClose) {
+    btnOptionalTabsClose.addEventListener("click", function () {
+      hideOptionalTabsModal();
+    });
+  }
+
+  var optionalTabsModal = document.getElementById("optionalTabsModal");
+  if (optionalTabsModal) {
+    optionalTabsModal.addEventListener("click", function (e) {
+      if (e.target === optionalTabsModal) {
+        hideOptionalTabsModal();
       }
     });
   }
