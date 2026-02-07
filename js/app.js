@@ -1581,6 +1581,12 @@ function pickHeaderName(uploadHeaderCell, idx) {
   return trimmed !== "" ? trimmed : buildExtraHeaderName(idx);
 }
 
+// Helper: For Period upload — one display header from uploaded cell, blank -> "Column N" (1-based), then make unique
+function uploadHeaderToDisplayName(uploadedCell, oneBasedIndex, existingHeadersSoFar) {
+  var raw = (uploadedCell != null && String(uploadedCell).trim() !== "") ? String(uploadedCell).trim() : ("Column " + oneBasedIndex);
+  return makeUniqueHeaderName(existingHeadersSoFar, raw, -1);
+}
+
 function uploadBackup(file) {
   if (!state.studentId) {
     showStatus("Enter your company name first", "error");
@@ -1616,7 +1622,6 @@ function uploadBackup(file) {
           const templateHeaders = config.headers;
           if (internalName === "Resource Driver(M. A. C.)" && config.headerRows) {
             var colCount, finalH, finalH2, finalH3, nd;
-            // Compute max length across all rows (including header rows and data rows)
             var dataMaxLen = 0;
             for (var r = 0; r < jsonData.length; r++) {
               if (Array.isArray(jsonData[r]) && jsonData[r].length > dataMaxLen) {
@@ -1626,24 +1631,58 @@ function uploadBackup(file) {
             if (jsonData.length >= 3 && Array.isArray(jsonData[0]) && Array.isArray(jsonData[1]) && Array.isArray(jsonData[2])) {
               var r0 = jsonData[0], r1 = jsonData[1], r2 = jsonData[2];
               colCount = Math.max(r0.length, r1.length, r2.length, dataMaxLen, (templateHeaders || []).length);
-              finalH = []; for (var i = 0; i < colCount; i++) finalH.push((r0[i] != null) ? String(r0[i]).trim() : "");
-              finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
-              finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
+              var uploadedHeaderWidth = r0.length;
+              if (workbookKey === "PeriodData") {
+                finalH = [];
+                for (var i = 0; i < colCount; i++) {
+                  if (i < uploadedHeaderWidth) {
+                    finalH.push(uploadHeaderToDisplayName(r0[i], i + 1, finalH));
+                  } else if (templateHeaders && i < templateHeaders.length) {
+                    finalH.push(templateHeaders[i] || "");
+                  } else {
+                    finalH.push(makeUniqueHeaderName(finalH, "Column " + (i + 1), -1));
+                  }
+                }
+                finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
+                finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
+              } else {
+                finalH = []; for (var i = 0; i < colCount; i++) finalH.push((r0[i] != null) ? String(r0[i]).trim() : "");
+                finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
+                finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
+              }
               nd = jsonData.slice(3).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n; });
             } else {
               var row0 = Array.isArray(jsonData[0]) ? jsonData[0] : [];
               colCount = Math.max(row0.length, dataMaxLen, (templateHeaders || []).length);
-              finalH = []; for (var i = 0; i < colCount; i++) finalH.push((row0[i] != null) ? String(row0[i]).trim() : "");
-              finalH2 = Array(colCount).fill(""); finalH3 = Array(colCount).fill("");
+              var uploadedHeaderWidth = row0.length;
+              if (workbookKey === "PeriodData") {
+                finalH = [];
+                for (var i = 0; i < colCount; i++) {
+                  if (i < uploadedHeaderWidth) {
+                    finalH.push(uploadHeaderToDisplayName(row0[i], i + 1, finalH));
+                  } else if (templateHeaders && i < templateHeaders.length) {
+                    finalH.push(templateHeaders[i] || "");
+                  } else {
+                    finalH.push(makeUniqueHeaderName(finalH, "Column " + (i + 1), -1));
+                  }
+                }
+                finalH2 = Array(colCount).fill(""); finalH3 = Array(colCount).fill("");
+              } else {
+                finalH = []; for (var i = 0; i < colCount; i++) finalH.push((row0[i] != null) ? String(row0[i]).trim() : "");
+                finalH2 = Array(colCount).fill(""); finalH3 = Array(colCount).fill("");
+              }
               nd = jsonData.slice(1).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n; });
             }
             var macSheet = { headers: finalH, headers2: finalH2, headers3: finalH3, data: nd.length > 0 ? nd : [Array(colCount).fill("")] };
-            // Mark uploaded columns beyond template as user-added
+            if (workbookKey === "PeriodData") {
+              var macUploadedWidth = jsonData.length >= 3 && Array.isArray(jsonData[0]) ? jsonData[0].length : (Array.isArray(jsonData[0]) ? jsonData[0].length : 0);
+              macSheet.uploadOverrideColFlags = [];
+              for (var i = 0; i < colCount; i++) macSheet.uploadOverrideColFlags.push(i < macUploadedWidth);
+            }
             ensureUserAddedColIds(macSheet);
             var templateColCount = templateHeaders.length;
             var baseTime = Date.now();
             for (var i = 0; i < colCount; i++) {
-              // MAC: columns beyond index 3 (first 4 are template) are user-added if beyond template
               var isNewColumn = (i >= 3 && i >= templateColCount);
               if (isNewColumn && (!macSheet.userAddedColIds[i] || macSheet.userAddedColIds[i] === "")) {
                 macSheet.userAddedColIds[i] = "u_" + baseTime + "_" + i;
@@ -1654,7 +1693,6 @@ function uploadBackup(file) {
           }
           if (internalName === "Resource Driver(S. A. C.)" && config.headerRows) {
             var colCount, finalH, finalH2, finalH3, nd;
-            // Compute max length across all rows (including header rows and data rows)
             var dataMaxLen = 0;
             for (var r = 0; r < jsonData.length; r++) {
               if (Array.isArray(jsonData[r]) && jsonData[r].length > dataMaxLen) {
@@ -1664,24 +1702,58 @@ function uploadBackup(file) {
             if (jsonData.length >= 3 && Array.isArray(jsonData[0]) && Array.isArray(jsonData[1]) && Array.isArray(jsonData[2])) {
               var r0 = jsonData[0], r1 = jsonData[1], r2 = jsonData[2];
               colCount = Math.max(r0.length, r1.length, r2.length, dataMaxLen, (templateHeaders || []).length);
-              finalH = []; for (var i = 0; i < colCount; i++) finalH.push((r0[i] != null) ? String(r0[i]).trim() : "");
-              finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
-              finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
+              var sacUploadedWidth = r0.length;
+              if (workbookKey === "PeriodData") {
+                finalH = [];
+                for (var i = 0; i < colCount; i++) {
+                  if (i < sacUploadedWidth) {
+                    finalH.push(uploadHeaderToDisplayName(r0[i], i + 1, finalH));
+                  } else if (templateHeaders && i < templateHeaders.length) {
+                    finalH.push(templateHeaders[i] || "");
+                  } else {
+                    finalH.push(makeUniqueHeaderName(finalH, "Column " + (i + 1), -1));
+                  }
+                }
+                finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
+                finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
+              } else {
+                finalH = []; for (var i = 0; i < colCount; i++) finalH.push((r0[i] != null) ? String(r0[i]).trim() : "");
+                finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
+                finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
+              }
               nd = jsonData.slice(3).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n; });
             } else {
               var row0 = Array.isArray(jsonData[0]) ? jsonData[0] : [];
               colCount = Math.max(row0.length, dataMaxLen, (templateHeaders || []).length);
-              finalH = []; for (var i = 0; i < colCount; i++) finalH.push((row0[i] != null) ? String(row0[i]).trim() : "");
-              finalH2 = Array(colCount).fill(""); finalH3 = Array(colCount).fill("");
+              var sacUploadedWidthElse = row0.length;
+              if (workbookKey === "PeriodData") {
+                finalH = [];
+                for (var i = 0; i < colCount; i++) {
+                  if (i < sacUploadedWidthElse) {
+                    finalH.push(uploadHeaderToDisplayName(row0[i], i + 1, finalH));
+                  } else if (templateHeaders && i < templateHeaders.length) {
+                    finalH.push(templateHeaders[i] || "");
+                  } else {
+                    finalH.push(makeUniqueHeaderName(finalH, "Column " + (i + 1), -1));
+                  }
+                }
+                finalH2 = Array(colCount).fill(""); finalH3 = Array(colCount).fill("");
+              } else {
+                finalH = []; for (var i = 0; i < colCount; i++) finalH.push((row0[i] != null) ? String(row0[i]).trim() : "");
+                finalH2 = Array(colCount).fill(""); finalH3 = Array(colCount).fill("");
+              }
               nd = jsonData.slice(1).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n; });
             }
             var sacSheet = { headers: finalH, headers2: finalH2, headers3: finalH3, data: nd.length > 0 ? nd : [Array(colCount).fill("")] };
-            // Mark uploaded columns beyond template as user-added
+            if (workbookKey === "PeriodData") {
+              var sacFlagsWidth = jsonData.length >= 3 && Array.isArray(jsonData[0]) ? jsonData[0].length : (Array.isArray(jsonData[0]) ? jsonData[0].length : 0);
+              sacSheet.uploadOverrideColFlags = [];
+              for (var i = 0; i < colCount; i++) sacSheet.uploadOverrideColFlags.push(i < sacFlagsWidth);
+            }
             ensureUserAddedColIds(sacSheet);
             var templateColCount = templateHeaders.length;
             var baseTime = Date.now();
             for (var i = 0; i < colCount; i++) {
-              // SAC: columns beyond index 3 (first 4 are template) are user-added if beyond template
               var isNewColumn = (i >= 3 && i >= templateColCount);
               if (isNewColumn && (!sacSheet.userAddedColIds[i] || sacSheet.userAddedColIds[i] === "")) {
                 sacSheet.userAddedColIds[i] = "u_" + baseTime + "_" + i;
@@ -1700,64 +1772,66 @@ function uploadBackup(file) {
             }
           }
           var uploadedColCount = Math.max(headerRow.length, maxRowLen);
-          
-          var finalHeaders = templateHeaders;
-          if (internalName === "Resource Driver(Actvity Center)") {
-            // Resource Driver(Actvity Center): 保留所有上傳的欄位，以實際欄位結構為準
-            // 前2欄固定使用模板，之後使用上傳的欄位名或生成默認名稱
-            var templateColCount = templateHeaders.length;
-            var desiredColCount = Math.max(uploadedColCount, templateColCount);
+          var templateColCountNum = templateHeaders.length;
+          var uploadedHeaderWidth = headerRow.length;
+
+          var finalHeaders;
+          if (workbookKey === "PeriodData") {
+            // Period Data upload: use uploaded header names to override; blank -> "Column N" (unique)
+            var desiredColCount = Math.max(templateColCountNum, uploadedColCount);
+            finalHeaders = [];
+            for (var i = 0; i < desiredColCount; i++) {
+              if (i < uploadedHeaderWidth) {
+                finalHeaders.push(uploadHeaderToDisplayName(headerRow[i], i + 1, finalHeaders));
+              } else if (i < templateColCountNum) {
+                finalHeaders.push(templateHeaders[i] || "");
+              } else {
+                finalHeaders.push(makeUniqueHeaderName(finalHeaders, "Column " + (i + 1), -1));
+              }
+            }
+          } else if (internalName === "Resource Driver(Actvity Center)") {
+            var desiredColCount = Math.max(uploadedColCount, templateColCountNum);
             finalHeaders = [];
             for (var i = 0; i < desiredColCount; i++) {
               if (i < 2) {
-                // 前2欄使用模板（Activity Center Code, (Activity Center)）
                 finalHeaders.push(templateHeaders[i] || "");
               } else if (i < headerRow.length) {
-                // 使用上傳的欄位名（如果存在）
                 var uploadHeader = (typeof headerRow[i] === "string" ? String(headerRow[i]).trim() : "");
                 finalHeaders.push(uploadHeader || buildExtraHeaderName(i));
               } else {
-                // 如果上傳欄位比模板少，生成默認名稱
                 finalHeaders.push(buildExtraHeaderName(i));
               }
             }
           } else {
-            // Generic sheets: expand headers to uploadedColCount if needed
-            var templateColCount = templateHeaders.length;
-            var desiredColCount = Math.max(templateColCount, uploadedColCount);
+            var desiredColCount = Math.max(templateColCountNum, uploadedColCount);
             finalHeaders = [];
             for (var i = 0; i < desiredColCount; i++) {
-              if (i < templateColCount) {
-                // Use template header if available
+              if (i < templateColCountNum) {
                 finalHeaders.push(templateHeaders[i] || "");
               } else if (i < headerRow.length) {
-                // Use uploaded header name if available
                 finalHeaders.push(pickHeaderName(headerRow[i], i));
               } else {
-                // Generate default name for extra columns
                 finalHeaders.push(buildExtraHeaderName(i));
               }
             }
           }
+
           var colCount = finalHeaders.length;
           const uploadedData = jsonData.slice(1);
-          // Check if any data row is longer than current colCount (shouldn't happen, but safety check)
           var actualMaxLen = colCount;
           for (var r = 0; r < uploadedData.length; r++) {
             if (Array.isArray(uploadedData[r]) && uploadedData[r].length > actualMaxLen) {
               actualMaxLen = uploadedData[r].length;
             }
           }
-          // Expand headers if needed to accommodate longer rows
           if (actualMaxLen > colCount) {
             for (var i = colCount; i < actualMaxLen; i++) {
-              finalHeaders.push(buildExtraHeaderName(i));
+              finalHeaders.push(makeUniqueHeaderName(finalHeaders, "Column " + (i + 1), -1));
             }
             colCount = actualMaxLen;
           }
           const normalizedData = uploadedData.map(function (row) {
             const newRow = [].concat(row);
-            // Pad to colCount, but NEVER truncate (preserve all uploaded data)
             while (newRow.length < colCount) newRow.push("");
             return newRow;
           });
@@ -1766,8 +1840,11 @@ function uploadBackup(file) {
             headers: finalHeaders,
             data: normalizedData.length > 0 ? normalizedData : [Array(colCount).fill("")]
           };
-          
-          // Mark uploaded columns beyond template as user-added
+          if (workbookKey === "PeriodData") {
+            sheet.uploadOverrideColFlags = [];
+            for (var i = 0; i < colCount; i++) sheet.uploadOverrideColFlags.push(i < uploadedHeaderWidth);
+          }
+
           ensureUserAddedColIds(sheet);
           var templateColCount = templateHeaders.length;
           var baseTime = Date.now();
@@ -2350,7 +2427,7 @@ function renderTable() {
           if (s && s.headers) { s.headers[colIndex] = inp.value; autoSave(); }
         });
         if (state.activeGroup === "PeriodData") {
-          if (isUserAddedColumn(state.activeSheet, colIndex)) {
+          if (isRenameableColumn(state.activeSheet, colIndex)) {
             var headerFocusValue;
             inp.addEventListener("focus", function () { headerFocusValue = inp.value; });
             inp.addEventListener("blur", function () { if (inp.value !== headerFocusValue) renameColumn(state.activeSheet, colIndex, inp.value); });
@@ -2479,7 +2556,7 @@ function renderTable() {
           if (s && s.headers) { s.headers[idx] = inp.value; autoSave(); }
         };
       }(c));
-      if (state.activeGroup === "PeriodData" && isUserAddedColumn(state.activeSheet, c)) {
+      if (state.activeGroup === "PeriodData" && isRenameableColumn(state.activeSheet, c)) {
         var headerFocusVal;
         inp.addEventListener("focus", function () { headerFocusVal = inp.value; });
         inp.addEventListener("blur", function () { if (inp.value !== headerFocusVal) renameColumn(state.activeSheet, c, inp.value); });
@@ -2627,7 +2704,7 @@ function renderTable() {
           if (s && s.headers) { s.headers[idx] = inp.value; autoSave(); }
         };
       }(c));
-      if (state.activeGroup === "PeriodData" && isUserAddedColumn(state.activeSheet, c)) {
+      if (state.activeGroup === "PeriodData" && isRenameableColumn(state.activeSheet, c)) {
         var headerFocusValSAC;
         inp.addEventListener("focus", function () { headerFocusValSAC = inp.value; });
         inp.addEventListener("blur", function () { if (inp.value !== headerFocusValSAC) renameColumn(state.activeSheet, c, inp.value); });
@@ -2803,6 +2880,8 @@ function renderTable() {
           btnDel.title = "Delete column";
           btnDel.addEventListener("click", function (e) { e.stopPropagation(); deleteUserColumn(state.activeSheet, colIndex); });
           th.appendChild(btnDel);
+        }
+        if (isRenameableColumn(state.activeSheet, colIndex)) {
           th.addEventListener("dblclick", function () {
             var newName = prompt("Rename column:", (sheet.headers[colIndex] != null) ? String(sheet.headers[colIndex]) : "");
             if (newName !== null) renameColumn(state.activeSheet, colIndex, newName);
@@ -3021,6 +3100,10 @@ function ensureUserAddedColIds(sheet) {
   if (!sheet.userAddedColIds) sheet.userAddedColIds = [];
   while (sheet.userAddedColIds.length < sheet.headers.length) sheet.userAddedColIds.push("");
   if (sheet.userAddedColIds.length > sheet.headers.length) sheet.userAddedColIds.splice(sheet.headers.length);
+  if (sheet.uploadOverrideColFlags) {
+    while (sheet.uploadOverrideColFlags.length < sheet.headers.length) sheet.uploadOverrideColFlags.push(false);
+    if (sheet.uploadOverrideColFlags.length > sheet.headers.length) sheet.uploadOverrideColFlags.splice(sheet.headers.length);
+  }
 }
 
 function isUserAddedColumn(sheetName, colIndex) {
@@ -3032,6 +3115,12 @@ function isUserAddedColumn(sheetName, colIndex) {
   return false;
 }
 
+function isRenameableColumn(sheetName, colIndex) {
+  if (isUserAddedColumn(sheetName, colIndex)) return true;
+  var sheet = state.data[sheetName];
+  return !!(sheet && sheet.uploadOverrideColFlags && sheet.uploadOverrideColFlags[colIndex]);
+}
+
 function insertColumnAt(sheetName, colIndex, headerName) {
   var sheet = state.data[sheetName];
   if (!sheet || !sheet.headers) return;
@@ -3039,6 +3128,7 @@ function insertColumnAt(sheetName, colIndex, headerName) {
   if (sheet.headers2) sheet.headers2.splice(colIndex, 0, "");
   if (sheet.headers3) sheet.headers3.splice(colIndex, 0, "");
   if (sheet.userAddedColIds) sheet.userAddedColIds.splice(colIndex, 0, "");
+  if (sheet.uploadOverrideColFlags) sheet.uploadOverrideColFlags.splice(colIndex, 0, false);
   for (var i = 0; i < (sheet.data || []).length; i++) {
     sheet.data[i].splice(colIndex, 0, "");
   }
@@ -3051,6 +3141,7 @@ function removeColumn(sheetName, colIndex) {
   if (sheet.headers2) sheet.headers2.splice(colIndex, 1);
   if (sheet.headers3) sheet.headers3.splice(colIndex, 1);
   if (sheet.userAddedColIds) sheet.userAddedColIds.splice(colIndex, 1);
+  if (sheet.uploadOverrideColFlags) sheet.uploadOverrideColFlags.splice(colIndex, 1);
   for (var i = 0; i < (sheet.data || []).length; i++) {
     sheet.data[i].splice(colIndex, 1);
   }
@@ -3096,7 +3187,7 @@ function insertColumnRight(sheetName, colIndex) {
 
 function renameColumn(sheetName, colIndex, newName, opts) {
   opts = opts || {};
-  if (!isUserAddedColumn(sheetName, colIndex)) return;
+  if (!isRenameableColumn(sheetName, colIndex)) return;
   var sheet = state.data[sheetName];
   if (!sheet || !sheet.headers) return;
   var oldName = (sheet.headers[colIndex] != null) ? String(sheet.headers[colIndex]) : "";
