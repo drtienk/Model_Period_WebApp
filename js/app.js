@@ -2951,6 +2951,28 @@ function renderTable() {
 
   updateValidationSummary();
   updateSelectionUI();
+  syncFloatingScrollbar();
+}
+
+function syncFloatingScrollbar() {
+  const tableWrapper = document.querySelector(".table-wrapper");
+  const floatingBar = document.getElementById("floatingScrollBar");
+  const floatingContent = document.getElementById("floatingScrollContent");
+  const table = document.getElementById("dataTable");
+
+  if (!tableWrapper || !floatingBar || !floatingContent || !table) return;
+
+  floatingContent.style.width = table.scrollWidth + "px";
+
+  if (!floatingBar.dataset.syncBound) {
+    floatingBar.dataset.syncBound = "1";
+    floatingBar.addEventListener("scroll", function () {
+      tableWrapper.scrollLeft = floatingBar.scrollLeft;
+    });
+    tableWrapper.addEventListener("scroll", function () {
+      floatingBar.scrollLeft = tableWrapper.scrollLeft;
+    });
+  }
 }
 
 function createCell(tag, className, text) {
