@@ -2962,6 +2962,11 @@ function syncFloatingScrollbar() {
 
   if (!tableWrapper || !floatingBar || !floatingContent || !table) return;
 
+  // ★★★ 新增：讓浮動捲軸對齊表格的位置和寬度 ★★★
+  var rect = tableWrapper.getBoundingClientRect();
+  floatingBar.style.left = rect.left + "px";
+  floatingBar.style.width = rect.width + "px";
+
   floatingContent.style.width = table.scrollWidth + "px";
 
   if (!floatingBar.dataset.syncBound) {
