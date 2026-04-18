@@ -2201,6 +2201,7 @@ function createNewPeriod() {
 
   // 切換到新月份
   state.activePeriod = period;
+  state.activeGroup = "PeriodData";
   state.data = newPeriodData.data;
   state.changeLog = [];
   state.activeSheet = newPeriodData.activeSheet;
