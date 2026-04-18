@@ -1160,8 +1160,21 @@ function saveToStorage() {
     localStorage.setItem(key, JSON.stringify(existingData));
     showStatus("Saved (" + state.changeLog.length + " changes)");
   } catch (e) {
-    console.error("Storage error:", e);
-    showStatus("Storage full. Please Download backup first.", "error");
+    // 第一次嘗試：清空 changeLog 再存
+    try {
+      existingData.changeLog = [];
+      state.changeLog = [];
+      if (existingData.periods) {
+        for (var p in existingData.periods) {
+          if (existingData.periods[p].changeLog) existingData.periods[p].changeLog = [];
+        }
+      }
+      localStorage.setItem(key, JSON.stringify(existingData));
+      showStatus("Saved (change logs cleared to free space)");
+    } catch (e2) {
+      console.error("Storage error:", e2);
+      showStatus("Storage full. Please Download backup then Delete unused periods.", "error");
+    }
   }
 }
 
@@ -2170,8 +2183,22 @@ function createNewPeriod() {
   parsed.periods[period] = newPeriodData;
   parsed.activePeriod = period;
   parsed.activeGroup = "PeriodData";
-  localStorage.setItem(key, JSON.stringify(parsed));
-  
+  try {
+    localStorage.setItem(key, JSON.stringify(parsed));
+  } catch (e) {
+    // 第一次嘗試：清空所有 period 的 changeLog 再試
+    try {
+      for (var p in parsed.periods) {
+        if (parsed.periods[p].changeLog) parsed.periods[p].changeLog = [];
+      }
+      localStorage.setItem(key, JSON.stringify(parsed));
+      showStatus("Period created (change logs cleared to free space)");
+    } catch (e2) {
+      showStatus("Storage full. Please download existing periods as backup, then delete unused periods.", "error");
+      return;
+    }
+  }
+
   // 切換到新月份
   state.activePeriod = period;
   state.data = newPeriodData.data;
