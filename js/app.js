@@ -861,10 +861,10 @@ function showRequiredFieldsModal() {
   var sheetSelect = document.getElementById("requiredFieldsSheetSelect");
   var columnList = document.getElementById("requiredFieldsColumnList");
   
-  // Populate sheet dropdown with PeriodData sheets only
+  // Populate sheet dropdown based on active workbook
   sheetSelect.innerHTML = '<option value="">-- Select Sheet --</option>';
-  var periodSheets = getSheetsForWorkbook("PeriodData");
-  periodSheets.forEach(function(sheetName) {
+  var wbSheets = getSheetsForWorkbook(state.activeGroup);
+  wbSheets.forEach(function(sheetName) {
     var config = getSheetConfig(sheetName);
     if (config && !config.hidden) {
       var option = document.createElement("option");
@@ -1993,10 +1993,10 @@ function renderWorkbookToggle() {
   if (periodContainer) {
     periodContainer.style.display = state.activeGroup === "PeriodData" ? "flex" : "none";
   }
-  // 顯示/隱藏 Required Fields 按鈕（僅在 PeriodData 模式下顯示）
+  // 顯示/隱藏 Required Fields 按鈕（ModelData 和 PeriodData 皆顯示）
   var btnRequiredFields = document.getElementById("btnRequiredFields");
   if (btnRequiredFields) {
-    btnRequiredFields.style.display = state.activeGroup === "PeriodData" ? "" : "none";
+    btnRequiredFields.style.display = "";
   }
   // 顯示/隱藏 Optional Tabs 按鈕（僅在 PeriodData 模式下顯示）
   var btnOptionalTabs = document.getElementById("btnOptionalTabs");
