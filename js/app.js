@@ -2368,6 +2368,7 @@ function renderGroupedNav() {
       }
       // Required tabs: orange accent
       var REQUIRED_TABS_PERIOD = new Set([
+        "Exchange Rate",
         "Resource",
         "Resource Driver(M. A. C.)",
         "Activity Center Driver(N. Cap.)",
