@@ -352,7 +352,7 @@ const TEMPLATE_DATA = {
       workbook: "ModelData",
       headers: ["Activity Code", "Activity - Level 1", "Activity - Level 2", "Activity - Level 3", "Activity - Level 4", "Activity Name", "Description", "Activity Driver", "Quality Attribute", "Customer Service Attribute", "Productivity Attribute", "Value-added Attribute", "Reason Group", "Value Object Type", "Product Cost Type"],
       data: [["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]],
-      required: ["Activity Code", "Activity Name"]
+      required: ["Activity Code", "Activity Name", "Activity - Level 1", "Activity Driver", "Customer Service Attribute", "Value-added Attribute"]
     },
     "Material": {
       workbook: "ModelData",
@@ -382,7 +382,7 @@ const TEMPLATE_DATA = {
       workbook: "ModelData",
       headers: ["Entity", "Code", "Service Driver"],
       data: [["", "", ""]],
-      required: ["Entity", "Code"]
+      required: ["Entity", "Code", "Service Driver"]
     },
 
     // ========================================
