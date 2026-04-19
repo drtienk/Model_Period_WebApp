@@ -654,13 +654,13 @@ var DEFAULT_ROWS_MODEL_MAP = {
 };
 
 var PERIOD_DIM_SHEETS = new Set([
+  "Resource Driver(Actvity Center)",
   "Resource Driver(Value Object)",
   "Resource Driver(Machine)",
-  "Activity Center Driver(N. Cap.)",
+  "Resource Driver(S. A. C.)",
   "ProductProject Driver",
   "Manufacture Order",
   "Manufacture Material",
-  "Purchased Material and WIP",
   "Expected Project Value",
   "Revenue(InternalTransaction)NA",
   "Std. Workhour",
