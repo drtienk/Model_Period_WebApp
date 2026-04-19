@@ -430,7 +430,7 @@ const TEMPLATE_DATA = {
       workbook: "PeriodData",
       headers: ["Business Unit", "Resource Code", "(Resource description)", "Activity Center Code", "(Activity center description)", "Amount", "Value Object Type", "Value Object Code", "Machine Code", "Product Code"],
       data: Array(20).fill(0).map(function () { return Array(10).fill(""); }),
-      required: ["Business Unit", "Resource Code", "Amount"]
+      required: ["Business Unit", "Resource Code", "Amount", "Activity Center Code"]
     },
     "Resource Driver(Actvity Center)": {
       workbook: "PeriodData",
@@ -488,7 +488,7 @@ const TEMPLATE_DATA = {
       workbook: "PeriodData",
       headers: ["Activity Center Code", "(Activity Center description)", "Machine Code", "Activity Code", "(Activity  Description)", "Activity Driver", "Activity Driver Value", "Value Object Code", "Value Object Type", "Product Code"],
       data: Array(100).fill(0).map(function () { return Array(10).fill(""); }),
-      required: ["Activity Center Code", "Activity Code", "Activity Driver", "Activity Driver Value"]
+      required: ["Activity Center Code", "Activity Code", "Activity Driver", "Activity Driver Value", "Value Object Code", "Value Object Type", "Product Code"]
     },
     // ADriver insert description column end
     // ADriver insert activity description column end
@@ -514,7 +514,7 @@ const TEMPLATE_DATA = {
       workbook: "PeriodData",
       headers: ["Business Unit", "Material Code", "Quantity", "Amount", "End Inventory Qty", "Unit", "End Inventory Amount"],
       data: Array(3).fill(0).map(function () { return Array(7).fill(""); }),
-      required: ["Business Unit", "Material Code"]
+      required: ["Business Unit", "Material Code", "Quantity", "Amount", "End Inventory Qty", "Unit", "End Inventory Amount"]
     },
     "Expected Project Value": {
       workbook: "PeriodData",
@@ -526,7 +526,7 @@ const TEMPLATE_DATA = {
       workbook: "PeriodData",
       headers: ["Order No", "Customer Code", "Product Code", "Quantity", "Amount", "Sales Activity Center Code", "Shipment Business Unit", "Currency"],
       data: Array(100).fill(0).map(function () { return Array(8).fill(""); }),
-      required: ["Order No", "Customer Code", "Product Code", "Quantity", "Amount"]
+      required: ["Order No", "Customer Code", "Product Code", "Quantity", "Amount", "Sales Activity Center Code", "Shipment Business Unit", "Currency"]
     },
     "Revenue(InternalTransaction)NA": {
       workbook: "PeriodData",
