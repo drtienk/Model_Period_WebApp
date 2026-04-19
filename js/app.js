@@ -3554,6 +3554,23 @@ function bindEvents() {
     });
   }
 
+  var btnOptionalTabsReset = document.getElementById("btnOptionalTabsReset");
+  if (btnOptionalTabsReset) {
+    btnOptionalTabsReset.addEventListener("click", function () {
+      if (!state.studentId) { showStatus("Please enter company name first", "error"); return; }
+      var key = "excelForm_v1_" + state.studentId;
+      try {
+        var saved = localStorage.getItem(key);
+        var parsed = saved ? JSON.parse(saved) : {};
+        if (parsed.uiPrefs) delete parsed.uiPrefs.periodTabDim;
+        localStorage.setItem(key, JSON.stringify(parsed));
+      } catch (e) { console.error(e); }
+      showStatus("Optional Tabs reset to default.", "success");
+      renderOptionalTabsList();
+      renderGroupedNav();
+    });
+  }
+
   document.getElementById("btnAddRow").addEventListener("click", function () {
     addRow();
   });
