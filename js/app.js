@@ -2367,7 +2367,7 @@ function renderGroupedNav() {
         pill.classList.toggle("tab-dim", optionalSet.has(internalName));
       }
       // Required tabs: orange accent
-      var REQUIRED_TABS = new Set([
+      var REQUIRED_TABS_PERIOD = new Set([
         "Resource",
         "Resource Driver(M. A. C.)",
         "Activity Center Driver(N. Cap.)",
@@ -2377,7 +2377,22 @@ function renderGroupedNav() {
         "Sales Revenue ",
         "Service Driver_Period"
       ]);
-      if (wbKey === "PeriodData" && REQUIRED_TABS.has(internalName)) {
+      var REQUIRED_TABS_MODEL = new Set([
+        "Company",
+        "Business Unit",
+        "Company Resource",
+        "Activity Center",
+        " Normal Capacity",
+        "Activity",
+        "Driver and Allocation Formula",
+        "Product",
+        "Customer",
+        "Service Driver"
+      ]);
+      if (wbKey === "PeriodData" && REQUIRED_TABS_PERIOD.has(internalName)) {
+        pill.classList.add("tab-required");
+      }
+      if (wbKey === "ModelData" && REQUIRED_TABS_MODEL.has(internalName)) {
         pill.classList.add("tab-required");
       }
       pill.textContent = getExcelSheetName(internalName);
