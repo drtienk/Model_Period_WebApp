@@ -2366,6 +2366,20 @@ function renderGroupedNav() {
       if (wbKey === "PeriodData" && optionalSet) {
         pill.classList.toggle("tab-dim", optionalSet.has(internalName));
       }
+      // Required tabs: orange accent
+      var REQUIRED_TABS = new Set([
+        "Resource",
+        "Resource Driver(M. A. C.)",
+        "Activity Center Driver(N. Cap.)",
+        "Activity Center Driver(A. Cap.)",
+        "Activity Driver",
+        "Purchased Material and WIP",
+        "Sales Revenue ",
+        "Service Driver_Period"
+      ]);
+      if (wbKey === "PeriodData" && REQUIRED_TABS.has(internalName)) {
+        pill.classList.add("tab-required");
+      }
       pill.textContent = getExcelSheetName(internalName);
       pill.addEventListener("click", function () {
         state.activeGroup = wbKey;

@@ -326,6 +326,34 @@ body {
   border-color: #2563eb;
 }
 
+/* Period Data：Required tabs - orange accent to signal must-fill */
+.nav-pill.tab-required {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border-color: #fb923c;
+  font-weight: 600;
+}
+.nav-pill.tab-required:hover {
+  background-color: #ffedd5;
+  border-color: #ea580c;
+  color: #9a3412;
+}
+.nav-pill.tab-required.active {
+  background: #ea580c;
+  color: #fff;
+  border-color: #ea580c;
+}
+.nav-pill.tab-required.active:hover {
+  background: #c2410c;
+  color: #fff;
+  border-color: #c2410c;
+}
+.nav-pill.tab-required.tab-dim {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border-color: #fb923c;
+}
+
 /* Period Data：Optional tabs - grey/muted look (less prominent) */
 .nav-pill.tab-dim {
   background-color: #f1f5f9;
