@@ -653,6 +653,13 @@ var DEFAULT_ROWS_MODEL_MAP = {
   "Service Driver": 5
 };
 
+// 預設隱藏的 ModelData tabs
+var MODEL_DEFAULT_HIDDEN_SHEETS = new Set([
+  "Machine(Activity Center Driver)",
+  "Material",
+  "ProductProject"
+]);
+
 // 預設隱藏的 PeriodData tabs（不在導覽列顯示，但 Excel 照常輸出）
 var PERIOD_DEFAULT_HIDDEN_SHEETS = new Set([
   "Resource Driver(Actvity Center)",
@@ -981,9 +988,37 @@ function getPeriodTabHiddenPrefs(studentId) {
   }
 }
 
+function getModelTabHiddenPrefs(studentId) {
+  if (!studentId) return new Set(MODEL_DEFAULT_HIDDEN_SHEETS);
+  var key = "excelForm_v1_" + studentId;
+  try {
+    var saved = localStorage.getItem(key);
+    if (!saved) return new Set(MODEL_DEFAULT_HIDDEN_SHEETS);
+    var parsed = JSON.parse(saved);
+    if (parsed.uiPrefs && Array.isArray(parsed.uiPrefs.modelTabHidden)) {
+      return new Set(parsed.uiPrefs.modelTabHidden);
+    }
+    return new Set(MODEL_DEFAULT_HIDDEN_SHEETS);
+  } catch (e) {
+    return new Set(MODEL_DEFAULT_HIDDEN_SHEETS);
+  }
+}
+
+function setModelTabHiddenPrefs(studentId, hiddenArray) {
+  if (!studentId) { showStatus("Please enter company name first", "error"); return; }
+  var key = "excelForm_v1_" + studentId;
+  var existingData = {};
+  try { var existing = localStorage.getItem(key); if (existing) existingData = JSON.parse(existing); } catch (e) { existingData = {}; }
+  if (!existingData.uiPrefs) existingData.uiPrefs = {};
+  existingData.uiPrefs.modelTabHidden = hiddenArray;
+  existingData.lastModified = new Date().toISOString();
+  try { localStorage.setItem(key, JSON.stringify(existingData)); } catch (e) { showStatus("Storage error.", "error"); }
+}
+
 function getOptionalTabsSetForUI() {
-  if (state.activeGroup !== "PeriodData") return new Set();
-  return getPeriodTabHiddenPrefs(state.studentId);
+  if (state.activeGroup === "PeriodData") return getPeriodTabHiddenPrefs(state.studentId);
+  if (state.activeGroup === "ModelData") return getModelTabHiddenPrefs(state.studentId);
+  return new Set();
 }
 
 function setPeriodTabHiddenPrefs(studentId, hiddenArray) {
@@ -1028,8 +1063,8 @@ function renderOptionalTabsList() {
   var listContainer = document.getElementById("optionalTabsList");
   if (!listContainer) return;
 
-  var periodSheets = getSheetsForWorkbook("PeriodData");
-  var hiddenSet = getPeriodTabHiddenPrefs(state.studentId);
+  var periodSheets = getSheetsForWorkbook(state.activeGroup);
+  var hiddenSet = getOptionalTabsSetForUI();
 
   var html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
   periodSheets.forEach(function(sheetName) {
@@ -1079,7 +1114,11 @@ function saveOptionalTabsFromUI() {
     }
   });
 
-  setPeriodTabHiddenPrefs(state.studentId, hiddenArray);
+  if (state.activeGroup === "ModelData") {
+    setModelTabHiddenPrefs(state.studentId, hiddenArray);
+  } else {
+    setPeriodTabHiddenPrefs(state.studentId, hiddenArray);
+  }
   showStatus("Optional Tabs saved.", "success");
   renderOptionalTabsList();
   renderGroupedNav();
@@ -1998,10 +2037,10 @@ function renderWorkbookToggle() {
   if (btnRequiredFields) {
     btnRequiredFields.style.display = "";
   }
-  // 顯示/隱藏 Optional Tabs 按鈕（僅在 PeriodData 模式下顯示）
+  // 顯示/隱藏 Optional Tabs 按鈕（ModelData 和 PeriodData 皆顯示）
   var btnOptionalTabs = document.getElementById("btnOptionalTabs");
   if (btnOptionalTabs) {
-    btnOptionalTabs.style.display = state.activeGroup === "PeriodData" ? "" : "none";
+    btnOptionalTabs.style.display = "";
   }
   // 顯示/隱藏 Delete Period 按鈕（僅在 PeriodData 模式下顯示）
   var btnDeletePeriod = document.getElementById("btnDeletePeriod");
@@ -2310,8 +2349,7 @@ function renderGroupedNav() {
   container.innerHTML = "";
   if (!groups || !groups.length) return;
 
-  // Get optional tabs set for PeriodData
-  var optionalSet = (wbKey === "PeriodData") ? getOptionalTabsSetForUI() : null;
+  var optionalSet = getOptionalTabsSetForUI();
 
   groups.forEach(function (grp) {
     const row = document.createElement("div");
@@ -2328,8 +2366,8 @@ function renderGroupedNav() {
     (grp.sheets || []).forEach(function (internalName) {
       const config = getSheetConfig(internalName);
       if (!config || config.hidden) return;
-      // PeriodData：隱藏的 tab 完全不渲染
-      if (wbKey === "PeriodData" && optionalSet && optionalSet.has(internalName)) return;
+      // 隱藏的 tab 完全不渲染
+      if (optionalSet && optionalSet.has(internalName)) return;
 
       const pill = document.createElement("button");
       pill.type = "button";
@@ -3533,7 +3571,11 @@ function bindEvents() {
       try {
         var saved = localStorage.getItem(key);
         var parsed = saved ? JSON.parse(saved) : {};
-        if (parsed.uiPrefs) { delete parsed.uiPrefs.periodTabDim; delete parsed.uiPrefs.periodTabHidden; }
+        if (parsed.uiPrefs) {
+          delete parsed.uiPrefs.periodTabDim;
+          delete parsed.uiPrefs.periodTabHidden;
+          delete parsed.uiPrefs.modelTabHidden;
+        }
         localStorage.setItem(key, JSON.stringify(parsed));
       } catch (e) { console.error(e); }
       showStatus("Optional Tabs reset to default.", "success");
