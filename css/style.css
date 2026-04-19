@@ -277,7 +277,7 @@ body {
   border: 1px solid #dbe2ea;
   border-radius: 999px;
   background: #ffffff;
-  color: var(--color-text);
+  color: #94a3b8;
   font-size: 13px;
   font-weight: 500;
   font-family: inherit;
@@ -289,7 +289,7 @@ body {
 .nav-pill:hover {
   background: #f8fafc;
   border-color: #cbd5e1;
-  color: var(--color-text);
+  color: #64748b;
 }
 
 .nav-pill.active {
@@ -354,16 +354,16 @@ body {
   border-color: #fb923c;
 }
 
-/* Period Data：Optional tabs - grey/muted look (less prominent) */
+/* Period Data：Optional tabs - white/gray (same as default pill) */
 .nav-pill.tab-dim {
-  background-color: #f1f5f9;
-  color: #64748b;
-  border-color: #cbd5e1;
+  background-color: #ffffff;
+  color: #94a3b8;
+  border-color: #dbe2ea;
 }
 .nav-pill.tab-dim:hover {
-  background-color: #e2e8f0;
-  border-color: #94a3b8;
-  color: #475569;
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #64748b;
 }
 .nav-pill.tab-dim.active {
   background: #3b82f6;
