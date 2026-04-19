@@ -1122,6 +1122,7 @@ function saveOptionalTabsFromUI() {
   showStatus("Optional Tabs saved.", "success");
   renderOptionalTabsList();
   renderGroupedNav();
+  hideOptionalTabsModal();
 }
 
 // --- Storage ---
