@@ -653,7 +653,8 @@ var DEFAULT_ROWS_MODEL_MAP = {
   "Service Driver": 5
 };
 
-var PERIOD_DIM_SHEETS = new Set([
+// 預設隱藏的 PeriodData tabs（不在導覽列顯示，但 Excel 照常輸出）
+var PERIOD_DEFAULT_HIDDEN_SHEETS = new Set([
   "Resource Driver(Actvity Center)",
   "Resource Driver(Value Object)",
   "Resource Driver(Machine)",
@@ -962,74 +963,49 @@ function resetRequiredFieldsOverride() {
 
 // --- Optional Tabs Admin Modal ---
 
-function getPeriodTabDimPrefs(studentId) {
-  if (!studentId) {
-    // No studentId, return default set
-    return new Set(PERIOD_DIM_SHEETS);
-  }
-  
+// 回傳「隱藏」的 sheet 集合（不在導覽列顯示）
+function getPeriodTabHiddenPrefs(studentId) {
+  if (!studentId) return new Set(PERIOD_DEFAULT_HIDDEN_SHEETS);
   var key = "excelForm_v1_" + studentId;
   try {
     var saved = localStorage.getItem(key);
-    if (!saved) {
-      return new Set(PERIOD_DIM_SHEETS);
-    }
-    
+    if (!saved) return new Set(PERIOD_DEFAULT_HIDDEN_SHEETS);
     var parsed = JSON.parse(saved);
-    if (parsed.uiPrefs && parsed.uiPrefs.periodTabDim) {
-      var dimArray = parsed.uiPrefs.periodTabDim;
-      if (Array.isArray(dimArray)) {
-        return new Set(dimArray);
-      }
+    if (parsed.uiPrefs && Array.isArray(parsed.uiPrefs.periodTabHidden)) {
+      return new Set(parsed.uiPrefs.periodTabHidden);
     }
-    
-    // No saved prefs, return default
-    return new Set(PERIOD_DIM_SHEETS);
+    return new Set(PERIOD_DEFAULT_HIDDEN_SHEETS);
   } catch (e) {
-    console.error("Error reading period tab dim prefs:", e);
-    return new Set(PERIOD_DIM_SHEETS);
+    console.error("Error reading period tab hidden prefs:", e);
+    return new Set(PERIOD_DEFAULT_HIDDEN_SHEETS);
   }
 }
 
 function getOptionalTabsSetForUI() {
   if (state.activeGroup !== "PeriodData") return new Set();
-  return getPeriodTabDimPrefs(state.studentId);
+  return getPeriodTabHiddenPrefs(state.studentId);
 }
 
-function setPeriodTabDimPrefs(studentId, dimArray) {
+function setPeriodTabHiddenPrefs(studentId, hiddenArray) {
   if (!studentId) {
     showStatus("Please enter company name first", "error");
     return;
   }
-  
   var key = "excelForm_v1_" + studentId;
-  
-  // Read existing data
   var existingData = {};
   try {
     var existing = localStorage.getItem(key);
-    if (existing) {
-      existingData = JSON.parse(existing);
-    }
+    if (existing) existingData = JSON.parse(existing);
   } catch (e) {
-    console.error("Error reading existing data:", e);
     existingData = {};
   }
-  
-  // Initialize uiPrefs if needed
-  if (!existingData.uiPrefs) {
-    existingData.uiPrefs = {};
-  }
-  
-  // Update periodTabDim
-  existingData.uiPrefs.periodTabDim = dimArray;
+  if (!existingData.uiPrefs) existingData.uiPrefs = {};
+  existingData.uiPrefs.periodTabHidden = hiddenArray;
   existingData.lastModified = new Date().toISOString();
-  
-  // Save back
   try {
     localStorage.setItem(key, JSON.stringify(existingData));
   } catch (e) {
-    console.error("Error saving period tab dim prefs:", e);
+    console.error("Error saving period tab hidden prefs:", e);
     showStatus("Storage error. Please try again.", "error");
   }
 }
@@ -1051,27 +1027,26 @@ function hideOptionalTabsModal() {
 function renderOptionalTabsList() {
   var listContainer = document.getElementById("optionalTabsList");
   if (!listContainer) return;
-  
+
   var periodSheets = getSheetsForWorkbook("PeriodData");
-  var prefSet = getPeriodTabDimPrefs(state.studentId);
-  
+  var hiddenSet = getPeriodTabHiddenPrefs(state.studentId);
+
   var html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
   periodSheets.forEach(function(sheetName) {
     var config = getSheetConfig(sheetName);
     if (!config || config.hidden) return;
-    
-    var isDim = prefSet.has(sheetName);
+
+    var isVisible = !hiddenSet.has(sheetName); // 勾選 = 顯示
     var checkboxId = "optional_tab_" + sheetName.replace(/[^a-zA-Z0-9]/g, "_");
-    var itemClass = isDim ? "dropdown-item-selected" : "dropdown-item-unselected";
+    var itemClass = isVisible ? "dropdown-item-selected" : "dropdown-item-unselected";
     html += '<label class="' + itemClass + '" style="display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; cursor: pointer;">';
-    html += '<input type="checkbox" id="' + checkboxId + '" data-sheet="' + sheetName + '" ' + (isDim ? 'checked' : '') + '>';
+    html += '<input type="checkbox" id="' + checkboxId + '" data-sheet="' + sheetName + '" ' + (isVisible ? 'checked' : '') + '>';
     html += '<span>' + getExcelSheetName(sheetName) + '</span>';
     html += '</label>';
   });
   html += '</div>';
   listContainer.innerHTML = html;
-  
-  // Add event listeners to update styling when checkbox state changes
+
   var checkboxes = listContainer.querySelectorAll('input[type="checkbox"]');
   checkboxes.forEach(function(checkbox) {
     checkbox.addEventListener('change', function() {
@@ -1094,21 +1069,19 @@ function saveOptionalTabsFromUI() {
     showStatus("Please enter company name first", "error");
     return;
   }
-  
+
   var checkboxes = document.querySelectorAll("#optionalTabsList input[type='checkbox']");
-  var dimArray = [];
-  
+  var hiddenArray = [];
+
   checkboxes.forEach(function(cb) {
-    if (cb.checked && cb.dataset.sheet) {
-      dimArray.push(cb.dataset.sheet);
+    if (!cb.checked && cb.dataset.sheet) {
+      hiddenArray.push(cb.dataset.sheet); // 未勾選 = 隱藏
     }
   });
-  
-  setPeriodTabDimPrefs(state.studentId, dimArray);
+
+  setPeriodTabHiddenPrefs(state.studentId, hiddenArray);
   showStatus("Optional Tabs saved.", "success");
-  // Re-render to reflect saved state (in case of any sync issues)
   renderOptionalTabsList();
-  // Update nav pills styling immediately
   renderGroupedNav();
 }
 
@@ -2355,16 +2328,14 @@ function renderGroupedNav() {
     (grp.sheets || []).forEach(function (internalName) {
       const config = getSheetConfig(internalName);
       if (!config || config.hidden) return;
+      // PeriodData：隱藏的 tab 完全不渲染
+      if (wbKey === "PeriodData" && optionalSet && optionalSet.has(internalName)) return;
 
       const pill = document.createElement("button");
       pill.type = "button";
       pill.className = "nav-pill" + (internalName === state.activeSheet ? " active" : "");
       if (wbKey === "ModelData" && ["Machine(Activity Center Driver)", "Material", "ProductProject"].indexOf(internalName) !== -1) {
         pill.classList.add("nav-pill-muted");
-      }
-      // Apply tab-dim class based on saved preferences for PeriodData
-      if (wbKey === "PeriodData" && optionalSet) {
-        pill.classList.toggle("tab-dim", optionalSet.has(internalName));
       }
       // Required tabs: orange accent
       var REQUIRED_TABS_PERIOD = new Set([
@@ -3562,7 +3533,7 @@ function bindEvents() {
       try {
         var saved = localStorage.getItem(key);
         var parsed = saved ? JSON.parse(saved) : {};
-        if (parsed.uiPrefs) delete parsed.uiPrefs.periodTabDim;
+        if (parsed.uiPrefs) { delete parsed.uiPrefs.periodTabDim; delete parsed.uiPrefs.periodTabHidden; }
         localStorage.setItem(key, JSON.stringify(parsed));
       } catch (e) { console.error(e); }
       showStatus("Optional Tabs reset to default.", "success");
