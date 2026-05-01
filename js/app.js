@@ -709,24 +709,44 @@ function ensureMACHeaderRows() {
   var s = state.data["Resource Driver(M. A. C.)"];
   if (!s || !s.headers) return;
   var L = s.headers.length;
-  if (!s.headers2) s.headers2 = [];
-  while (s.headers2.length < L) s.headers2.push("");
-  if (s.headers2.length > L) s.headers2.splice(L, s.headers2.length - L);
-  if (!s.headers3) s.headers3 = [];
-  while (s.headers3.length < L) s.headers3.push("");
-  if (s.headers3.length > L) s.headers3.splice(L, s.headers3.length - L);
+  // Initialize headers2 if missing, but preserve existing values
+  if (!s.headers2) {
+    s.headers2 = Array(L).fill("");
+  } else {
+    // Only adjust length, don't reset existing values
+    while (s.headers2.length < L) s.headers2.push("");
+    if (s.headers2.length > L) s.headers2.splice(L);
+  }
+  // Initialize headers3 if missing, but preserve existing values
+  if (!s.headers3) {
+    s.headers3 = Array(L).fill("");
+  } else {
+    // Only adjust length, don't reset existing values
+    while (s.headers3.length < L) s.headers3.push("");
+    if (s.headers3.length > L) s.headers3.splice(L);
+  }
 }
 
 function ensureSACHeaderRows() {
   var s = state.data["Resource Driver(S. A. C.)"];
   if (!s || !s.headers) return;
   var L = s.headers.length;
-  if (!s.headers2) s.headers2 = [];
-  while (s.headers2.length < L) s.headers2.push("");
-  if (s.headers2.length > L) s.headers2.splice(L, s.headers2.length - L);
-  if (!s.headers3) s.headers3 = [];
-  while (s.headers3.length < L) s.headers3.push("");
-  if (s.headers3.length > L) s.headers3.splice(L, s.headers3.length - L);
+  // Initialize headers2 if missing, but preserve existing values
+  if (!s.headers2) {
+    s.headers2 = Array(L).fill("");
+  } else {
+    // Only adjust length, don't reset existing values
+    while (s.headers2.length < L) s.headers2.push("");
+    if (s.headers2.length > L) s.headers2.splice(L);
+  }
+  // Initialize headers3 if missing, but preserve existing values
+  if (!s.headers3) {
+    s.headers3 = Array(L).fill("");
+  } else {
+    // Only adjust length, don't reset existing values
+    while (s.headers3.length < L) s.headers3.push("");
+    if (s.headers3.length > L) s.headers3.splice(L);
+  }
 }
 
 // MAC header rename: migrate old B=Machine Code, C=Driver 1 → B=(Activity Center ), C=Machine Code
@@ -1495,6 +1515,22 @@ function downloadWorkbook(workbookKey, timestamp, periodSuffix) {
       wsData = [headers].concat(data);
     }
     const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Remove currency and thousands separator formatting from all cells
+    if (ws['!ref']) {
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_col(C) + XLSX.utils.encode_row(R);
+          const cell = ws[cellAddress];
+          if (cell && typeof cell.v === 'number') {
+            // Set number format to 'General' (code 0) to remove currency/thousands formatting
+            cell.z = '0';
+          }
+        }
+      }
+    }
+
     XLSX.utils.book_append_sheet(wb, ws, excelSheetName);
   });
 
@@ -1511,6 +1547,21 @@ function downloadWorkbook(workbookKey, timestamp, periodSuffix) {
       return [c.timestamp, c.sheet, c.row, c.column, c.oldValue, c.newValue];
     });
     const logWs = XLSX.utils.aoa_to_sheet([logHeaders].concat(logData));
+
+    // Remove currency and thousands separator formatting from ChangeLog cells
+    if (logWs['!ref']) {
+      const range = XLSX.utils.decode_range(logWs['!ref']);
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_col(C) + XLSX.utils.encode_row(R);
+          const cell = logWs[cellAddress];
+          if (cell && typeof cell.v === 'number') {
+            cell.z = '0';
+          }
+        }
+      }
+    }
+
     XLSX.utils.book_append_sheet(wb, logWs, "ChangeLog");
   }
 
@@ -1537,6 +1588,21 @@ function downloadWorkbook(workbookKey, timestamp, periodSuffix) {
       ["17", "服務動因", "Service Driver", "Service Driver", "Required", ""]
     ];
     var itemWs = XLSX.utils.aoa_to_sheet([ITEM_HEADERS].concat(ITEM_DATA));
+
+    // Remove currency and thousands separator formatting from Item sheet cells
+    if (itemWs['!ref']) {
+      const itemRange = XLSX.utils.decode_range(itemWs['!ref']);
+      for (let R = itemRange.s.r; R <= itemRange.e.r; ++R) {
+        for (let C = itemRange.s.c; C <= itemRange.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_col(C) + XLSX.utils.encode_row(R);
+          const cell = itemWs[cellAddress];
+          if (cell && typeof cell.v === 'number') {
+            cell.z = '0';
+          }
+        }
+      }
+    }
+
     if (wb.SheetNames.indexOf("Item") !== -1) {
       wb.Sheets["Item"] = itemWs;
     } else {
@@ -1551,6 +1617,21 @@ function downloadWorkbook(workbookKey, timestamp, periodSuffix) {
       })
     );
     var tmWs = XLSX.utils.aoa_to_sheet(tmAoA);
+
+    // Remove currency and thousands separator formatting from TableMapping sheet cells
+    if (tmWs['!ref']) {
+      const tmRange = XLSX.utils.decode_range(tmWs['!ref']);
+      for (let R = tmRange.s.r; R <= tmRange.e.r; ++R) {
+        for (let C = tmRange.s.c; C <= tmRange.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_col(C) + XLSX.utils.encode_row(R);
+          const cell = tmWs[cellAddress];
+          if (cell && typeof cell.v === 'number') {
+            cell.z = '0';
+          }
+        }
+      }
+    }
+
     if (wb.SheetNames.indexOf("TableMapping") !== -1) {
       wb.Sheets["TableMapping"] = tmWs;
     } else {
@@ -1656,7 +1737,9 @@ function uploadBackup(file) {
             }
             if (jsonData.length >= 3 && Array.isArray(jsonData[0]) && Array.isArray(jsonData[1]) && Array.isArray(jsonData[2])) {
               var r0 = jsonData[0], r1 = jsonData[1], r2 = jsonData[2];
-              colCount = Math.max(r0.length, r1.length, r2.length, dataMaxLen, (templateHeaders || []).length);
+              // 判斷 r2 是否為資料行：若前 3 欄有值，代表是第一筆資料，非第 3 行 header
+              var r2IsData = [0, 1, 2].some(function(i) { return r2[i] != null && String(r2[i]).trim() !== ""; });
+              colCount = Math.max(r0.length, r1.length, r2IsData ? 0 : r2.length, dataMaxLen, (templateHeaders || []).length);
               var uploadedHeaderWidth = r0.length;
               if (workbookKey === "PeriodData") {
                 finalH = [];
@@ -1670,13 +1753,13 @@ function uploadBackup(file) {
                   }
                 }
                 finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
-                finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
+                finalH3 = r2IsData ? Array(colCount).fill("") : (function() { var a = []; for (var i = 0; i < colCount; i++) a.push((r2[i] != null) ? String(r2[i]).trim() : ""); return a; })();
               } else {
                 finalH = []; for (var i = 0; i < colCount; i++) finalH.push((r0[i] != null) ? String(r0[i]).trim() : "");
                 finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
-                finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
+                finalH3 = r2IsData ? Array(colCount).fill("") : (function() { var a = []; for (var i = 0; i < colCount; i++) a.push((r2[i] != null) ? String(r2[i]).trim() : ""); return a; })();
               }
-              nd = jsonData.slice(3).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n; });
+              nd = (r2IsData ? jsonData.slice(2) : jsonData.slice(3)).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n; });
             } else {
               var row0 = Array.isArray(jsonData[0]) ? jsonData[0] : [];
               colCount = Math.max(row0.length, dataMaxLen, (templateHeaders || []).length);
@@ -1727,7 +1810,9 @@ function uploadBackup(file) {
             }
             if (jsonData.length >= 3 && Array.isArray(jsonData[0]) && Array.isArray(jsonData[1]) && Array.isArray(jsonData[2])) {
               var r0 = jsonData[0], r1 = jsonData[1], r2 = jsonData[2];
-              colCount = Math.max(r0.length, r1.length, r2.length, dataMaxLen, (templateHeaders || []).length);
+              // 判斷 r2 是否為資料行：若前 3 欄有值，代表是第一筆資料，非第 3 行 header
+              var r2IsData = [0, 1, 2].some(function(i) { return r2[i] != null && String(r2[i]).trim() !== ""; });
+              colCount = Math.max(r0.length, r1.length, r2IsData ? 0 : r2.length, dataMaxLen, (templateHeaders || []).length);
               var sacUploadedWidth = r0.length;
               if (workbookKey === "PeriodData") {
                 finalH = [];
@@ -1741,13 +1826,13 @@ function uploadBackup(file) {
                   }
                 }
                 finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
-                finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
+                finalH3 = r2IsData ? Array(colCount).fill("") : (function() { var a = []; for (var i = 0; i < colCount; i++) a.push((r2[i] != null) ? String(r2[i]).trim() : ""); return a; })();
               } else {
                 finalH = []; for (var i = 0; i < colCount; i++) finalH.push((r0[i] != null) ? String(r0[i]).trim() : "");
                 finalH2 = []; for (var i = 0; i < colCount; i++) finalH2.push((r1[i] != null) ? String(r1[i]).trim() : "");
-                finalH3 = []; for (var i = 0; i < colCount; i++) finalH3.push((r2[i] != null) ? String(r2[i]).trim() : "");
+                finalH3 = r2IsData ? Array(colCount).fill("") : (function() { var a = []; for (var i = 0; i < colCount; i++) a.push((r2[i] != null) ? String(r2[i]).trim() : ""); return a; })();
               }
-              nd = jsonData.slice(3).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n; });
+              nd = (r2IsData ? jsonData.slice(2) : jsonData.slice(3)).map(function (row) { var n = [].concat(row); while (n.length < colCount) n.push(""); return n; });
             } else {
               var row0 = Array.isArray(jsonData[0]) ? jsonData[0] : [];
               colCount = Math.max(row0.length, dataMaxLen, (templateHeaders || []).length);
@@ -2052,6 +2137,12 @@ function renderWorkbookToggle() {
   if (state.activeGroup === "PeriodData") {
     updatePeriodSelector();
   }
+  // 顯示/隱藏 period 提示橫幅
+  var periodNotice = document.getElementById("periodNotice");
+  if (periodNotice) {
+    var showNotice = (state.activeGroup === "PeriodData" && !state.activePeriod);
+    periodNotice.classList.toggle("hidden", !showNotice);
+  }
 }
 
 function updatePeriodSelector() {
@@ -2177,19 +2268,29 @@ function createNewPeriod() {
       activeSheet: currentData.activeSheet || "Exchange Rate"
     };
   } else {
-    // 使用 template
-    initFromTemplate();
+    // 先用現有的 state.data（使用者可能已先輸入資料）；若沒有才 initFromTemplate
     var periodSheets = {};
+    var hasExistingData = false;
     for (var sheetName in state.data) {
       var config = getSheetConfig(sheetName);
       if (config && config.workbook === "PeriodData") {
         periodSheets[sheetName] = JSON.parse(JSON.stringify(state.data[sheetName]));
+        hasExistingData = true;
+      }
+    }
+    if (!hasExistingData) {
+      initFromTemplate();
+      for (var sheetName in state.data) {
+        var config = getSheetConfig(sheetName);
+        if (config && config.workbook === "PeriodData") {
+          periodSheets[sheetName] = JSON.parse(JSON.stringify(state.data[sheetName]));
+        }
       }
     }
     newPeriodData = {
       data: periodSheets,
       changeLog: [],
-      activeSheet: "Exchange Rate"
+      activeSheet: state.activeSheet || "Exchange Rate"
     };
   }
   
@@ -2571,9 +2672,7 @@ function renderTable() {
           th.textContent = (h != null) ? String(h) : "";
         }
       }
-      if (state.activeGroup === "PeriodData") {
-        th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, colIndex); });
-      }
+      th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, colIndex); });
       tr.appendChild(th);
     });
     tr.appendChild(createCell("th", "row-actions", ""));
@@ -2607,7 +2706,7 @@ function renderTable() {
       } else {
         th.textContent = (headers[c] != null) ? String(headers[c]) : "";
       }
-      if (state.activeGroup === "PeriodData") (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
+      (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
       tr1.appendChild(th);
     }
     for (var c = 3; c < headers.length; c++) {
@@ -2618,16 +2717,18 @@ function renderTable() {
       inp.className = "th-input";
       inp.type = "text";
       inp.value = (headers[c] != null) ? String(headers[c]) : "";
-      inp.addEventListener("input", function (idx) {
+      inp.addEventListener("input", function (idx, el) {
         return function () {
           var s = state.data[state.activeSheet];
-          if (s && s.headers) { s.headers[idx] = inp.value; autoSave(); }
+          if (s && s.headers) { s.headers[idx] = el.value; autoSave(); }
         };
-      }(c));
-      if (state.activeGroup === "PeriodData" && isRenameableColumn(state.activeSheet, c)) {
-        var headerFocusVal;
-        inp.addEventListener("focus", function () { headerFocusVal = inp.value; });
-        inp.addEventListener("blur", function () { if (inp.value !== headerFocusVal) renameColumn(state.activeSheet, c, inp.value); });
+      }(c, inp));
+      if (isRenameableColumn(state.activeSheet, c)) {
+        (function (col, el) {
+          var headerFocusVal;
+          el.addEventListener("focus", function () { headerFocusVal = el.value; });
+          el.addEventListener("blur", function () { if (el.value !== headerFocusVal) renameColumn(state.activeSheet, col, el.value); });
+        })(c, inp);
       }
       if (c === 3) {
         var wrap = document.createElement("span");
@@ -2679,7 +2780,7 @@ function renderTable() {
           th.appendChild(inp);
         }
       }
-      if (state.activeGroup === "PeriodData") (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
+      (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
       tr1.appendChild(th);
     }
     var thAct = document.createElement("th");
@@ -2695,14 +2796,14 @@ function renderTable() {
       inp.className = "th-input";
       inp.type = "text";
       inp.value = (h2[c] != null) ? String(h2[c]) : "";
-      inp.addEventListener("input", function (idx) {
+      inp.addEventListener("input", function (idx, el) {
         return function () {
           var s = state.data[state.activeSheet];
           if (!s.headers2) s.headers2 = [];
-          s.headers2[idx] = inp.value;
+          s.headers2[idx] = el.value;
           autoSave();
         };
-      }(c));
+      }(c, inp));
       th.appendChild(inp);
       tr2.appendChild(th);
     }
@@ -2715,14 +2816,14 @@ function renderTable() {
       inp.className = "th-input";
       inp.type = "text";
       inp.value = (h3[c] != null) ? String(h3[c]) : "";
-      inp.addEventListener("input", function (idx) {
+      inp.addEventListener("input", function (idx, el) {
         return function () {
           var s = state.data[state.activeSheet];
           if (!s.headers3) s.headers3 = [];
-          s.headers3[idx] = inp.value;
+          s.headers3[idx] = el.value;
           autoSave();
         };
-      }(c));
+      }(c, inp));
       th.appendChild(inp);
       tr3.appendChild(th);
     }
@@ -2755,7 +2856,7 @@ function renderTable() {
       } else {
         th.textContent = (headers[c] != null) ? String(headers[c]) : "";
       }
-      if (state.activeGroup === "PeriodData") (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
+      (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
       tr1.appendChild(th);
     }
     for (var c = 3; c < headers.length; c++) {
@@ -2766,16 +2867,18 @@ function renderTable() {
       inp.className = "th-input";
       inp.type = "text";
       inp.value = (headers[c] != null) ? String(headers[c]) : "";
-      inp.addEventListener("input", function (idx) {
+      inp.addEventListener("input", function (idx, el) {
         return function () {
           var s = state.data[state.activeSheet];
-          if (s && s.headers) { s.headers[idx] = inp.value; autoSave(); }
+          if (s && s.headers) { s.headers[idx] = el.value; autoSave(); }
         };
-      }(c));
-      if (state.activeGroup === "PeriodData" && isRenameableColumn(state.activeSheet, c)) {
-        var headerFocusValSAC;
-        inp.addEventListener("focus", function () { headerFocusValSAC = inp.value; });
-        inp.addEventListener("blur", function () { if (inp.value !== headerFocusValSAC) renameColumn(state.activeSheet, c, inp.value); });
+      }(c, inp));
+      if (isRenameableColumn(state.activeSheet, c)) {
+        (function (col, el) {
+          var headerFocusValSAC;
+          el.addEventListener("focus", function () { headerFocusValSAC = el.value; });
+          el.addEventListener("blur", function () { if (el.value !== headerFocusValSAC) renameColumn(state.activeSheet, col, el.value); });
+        })(c, inp);
       }
       if (c === 3) {
         var wrap = document.createElement("span");
@@ -2827,7 +2930,7 @@ function renderTable() {
           th.appendChild(inp);
         }
       }
-      if (state.activeGroup === "PeriodData") (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
+      (function (col) { th.addEventListener("contextmenu", function (e) { e.preventDefault(); insertColumnRight(state.activeSheet, col); }); })(c);
       tr1.appendChild(th);
     }
     var thAct = document.createElement("th");
@@ -2842,14 +2945,14 @@ function renderTable() {
       inp.className = "th-input";
       inp.type = "text";
       inp.value = (h2[c] != null) ? String(h2[c]) : "";
-      inp.addEventListener("input", function (idx) {
+      inp.addEventListener("input", function (idx, el) {
         return function () {
           var s = state.data[state.activeSheet];
           if (!s.headers2) s.headers2 = [];
-          s.headers2[idx] = inp.value;
+          s.headers2[idx] = el.value;
           autoSave();
         };
-      }(c));
+      }(c, inp));
       th.appendChild(inp);
       tr2.appendChild(th);
     }
@@ -2861,14 +2964,14 @@ function renderTable() {
       inp.className = "th-input";
       inp.type = "text";
       inp.value = (h3[c] != null) ? String(h3[c]) : "";
-      inp.addEventListener("input", function (idx) {
+      inp.addEventListener("input", function (idx, el) {
         return function () {
           var s = state.data[state.activeSheet];
           if (!s.headers3) s.headers3 = [];
-          s.headers3[idx] = inp.value;
+          s.headers3[idx] = el.value;
           autoSave();
         };
-      }(c));
+      }(c, inp));
       th.appendChild(inp);
       tr3.appendChild(th);
     }
@@ -2877,7 +2980,7 @@ function renderTable() {
     thead.innerHTML = "";
     var tr = document.createElement("tr");
     tr.appendChild(createCell("th", "row-num", "#"));
-    var isPeriodDataHeader = (state.activeGroup === "PeriodData" && !isTableMapping);
+    var isPeriodDataHeader = !isTableMapping;
     // Service Driver special case: allow renaming only the rightmost two columns (Column4 and Column5)
     var isServiceDriver = (state.activeSheet === "Service Driver_Period" && state.activeGroup === "PeriodData");
     var lastTwoColIndices = isServiceDriver ? [headers.length - 2, headers.length - 1] : [];
@@ -2976,7 +3079,7 @@ function renderTable() {
       const input = document.createElement("input");
       input.type = "text";
       input.value = val;
-      // TableMapping 永遠唯讀
+      // TableMapping 永遠唯讀；其他 cell 預設 readonly，進入 editMode 後移除
       if (isTableMapping) {
         input.setAttribute("readonly", "readonly");
         input.classList.add("cell-readonly");
@@ -3097,6 +3200,11 @@ function addDriverCodeColumnMAC() {
   if (state.activeSheet !== sheetName || state.activeGroup !== "PeriodData") return;
   var sheet = state.data[sheetName];
   if (!sheet || !sheet.headers || !sheet.data) return;
+
+  // Backup existing headers2/headers3 before modification
+  var backupHeaders2 = sheet.headers2 ? sheet.headers2.slice() : [];
+  var backupHeaders3 = sheet.headers3 ? sheet.headers3.slice() : [];
+
   var maxN = 0;
   for (var i = 3; i < sheet.headers.length; i++) {
     var m = String(sheet.headers[i] || "").match(/^Driver (\d+)$/);
@@ -3105,10 +3213,20 @@ function addDriverCodeColumnMAC() {
   var N = maxN + 1;
   if (N < 4) N = 4;
   sheet.headers.push("Driver " + N);
+
+  // Restore and extend headers2/headers3 with preserved values
   if (!sheet.headers2) sheet.headers2 = [];
+  for (var i = 0; i < sheet.headers.length - 1; i++) {
+    if (i >= sheet.headers2.length) sheet.headers2[i] = backupHeaders2[i] || "";
+  }
   sheet.headers2.push("");
+
   if (!sheet.headers3) sheet.headers3 = [];
+  for (var i = 0; i < sheet.headers.length - 1; i++) {
+    if (i >= sheet.headers3.length) sheet.headers3[i] = backupHeaders3[i] || "";
+  }
   sheet.headers3.push("");
+
   ensureUserAddedColIds(sheet);
   sheet.userAddedColIds.push("u_" + Date.now());
   for (var i = 0; i < sheet.data.length; i++) {
@@ -3135,6 +3253,11 @@ function addDriverCodeColumnSAC() {
   if (state.activeSheet !== sheetName || state.activeGroup !== "PeriodData") return;
   var sheet = state.data[sheetName];
   if (!sheet || !sheet.headers || !sheet.data) return;
+
+  // Backup existing headers2/headers3 before modification
+  var backupHeaders2 = sheet.headers2 ? sheet.headers2.slice() : [];
+  var backupHeaders3 = sheet.headers3 ? sheet.headers3.slice() : [];
+
   var maxN = 0;
   for (var i = 3; i < sheet.headers.length; i++) {
     var m = String(sheet.headers[i] || "").match(/^Driver (\d+)$/);
@@ -3143,10 +3266,20 @@ function addDriverCodeColumnSAC() {
   var N = maxN + 1;
   if (N < 7) N = 7;
   sheet.headers.push("Driver " + N);
+
+  // Restore and extend headers2/headers3 with preserved values
   if (!sheet.headers2) sheet.headers2 = [];
+  for (var i = 0; i < sheet.headers.length - 1; i++) {
+    if (i >= sheet.headers2.length) sheet.headers2[i] = backupHeaders2[i] || "";
+  }
   sheet.headers2.push("");
+
   if (!sheet.headers3) sheet.headers3 = [];
+  for (var i = 0; i < sheet.headers.length - 1; i++) {
+    if (i >= sheet.headers3.length) sheet.headers3[i] = backupHeaders3[i] || "";
+  }
   sheet.headers3.push("");
+
   ensureUserAddedColIds(sheet);
   sheet.userAddedColIds.push("u_" + Date.now());
   for (var i = 0; i < sheet.data.length; i++) {
@@ -3243,7 +3376,7 @@ function removeColumn(sheetName, colIndex) {
 }
 
 function insertColumnRight(sheetName, colIndex) {
-  if (state.activeGroup !== "PeriodData" || sheetName === "TableMapping") return;
+  if (sheetName === "TableMapping") return;
   var sheet = state.data[sheetName];
   if (!sheet || !sheet.headers) return;
   var base = (sheet.headers[colIndex] != null) ? String(sheet.headers[colIndex]).trim() : "";
@@ -3322,7 +3455,7 @@ function recordChangeSpecial(changeObj) {
 }
 
 function deleteUserColumn(sheetName, colIndex) {
-  if (state.activeGroup !== "PeriodData" || sheetName === "TableMapping") return;
+  if (sheetName === "TableMapping") return;
   if (!isUserAddedColumn(sheetName, colIndex)) return;
   var sheet = state.data[sheetName];
   if (!sheet || !sheet.headers || !sheet.data) return;
