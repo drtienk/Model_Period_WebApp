@@ -403,6 +403,19 @@ body {
   color: var(--color-text-muted);
 }
 
+.period-notice {
+  background: #fff8e1;
+  border-left: 4px solid #f59e0b;
+  color: #92400e;
+  padding: 10px 16px;
+  font-size: 13px;
+  margin: 0;
+}
+
+.period-notice.hidden {
+  display: none;
+}
+
 .table-wrapper {
   overflow-x: auto;
   background: var(--color-surface);
